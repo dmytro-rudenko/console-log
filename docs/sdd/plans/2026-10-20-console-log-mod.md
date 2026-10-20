@@ -498,7 +498,7 @@ export function paneHint(focused: boolean, hasCtrlArrows: boolean): string {
 - Consumes: `parseTaskNotification` (Task 2); `sanitize` (Task 3); `addTask`, `applyNotification`, `dropTask`, `selectTask`, `hasRunning` (Task 4); `fit`, `topParts`, `bottomParts`, `age`, `mark`, `statusText`, `tabLabel`, `tabWidth`, `tabWindow`, `paneHint` (Task 5); типи з `../types` (Task 1).
 - Produces: `export const register: Register`; slash-команда `console-log`; панель id `console-log`.
 
-- [ ] **Step 1: write the failing test** `hooks/pane.test.tsx`:
+- [x] **Step 1: write the failing test** `hooks/pane.test.tsx`:
 ```tsx
 import { expect, mock, test } from 'claude-code/testing'
 
@@ -555,8 +555,8 @@ test('an empty pane says so', async ($, on) => {
 })
 ```
   Якщо назва події/форма відповіді engine-заглушки (`session.id`, `fs.read`, `process.run`, `env`) у `claude-code.d.ts` інша — виправити заглушку за типами (grep `'session.id'`, `'process.run'`, `export type Mock`), не змінюючи тверджень `expect`.
-- [ ] **Step 2: run it, watch it fail** — `claude plugin test .` → fail: `hooks/register.tsx` відсутній.
-- [ ] **Step 3: implement** `hooks/register.tsx`:
+- [x] **Step 2: run it, watch it fail** — `claude plugin test .` → fail: `hooks/register.tsx` відсутній.
+- [x] **Step 3: implement** `hooks/register.tsx`:
 ```tsx
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
@@ -863,8 +863,8 @@ export const register: Register = on => {
   - `Timer` імпортується з `'claude-code'` (`export type Timer = { cancel(): void }`). Якщо експорт має іншу назву — взяти `ReturnType<EngineInterface['clock']['every']>`.
   - Якщо `ui.close` хук вимагає матчер — `on('ui.close', { id: PANE }, …)`; тип вхідних `PaneCloseInput { id, origin: { kind: 'plugin'|'person'|'unload' } }`.
   - `claude plugin validate .` має пройти: якщо скаржиться на передачу `$` у стрілкові замикання (`() => void poll($)`), винести колбеки в top-level функції.
-- [ ] **Step 4: run it, watch it pass** — `claude plugin validate .` → `✔ Validation passed`; type-check з Global constraints → без виводу; `claude plugin test .` → усі тести (notification 5, sanitize 4, tasks 5, layout 7, pane 2) pass.
-- [ ] **Step 5: commit** `feat(console-log): pane with live output of background tasks`
+- [x] **Step 4: run it, watch it pass** — `claude plugin validate .` → `✔ Validation passed`; type-check з Global constraints → без виводу; `claude plugin test .` → усі тести (notification 5, sanitize 4, tasks 5, layout 7, pane 2) pass.
+- [x] **Step 5: commit** `feat(console-log): pane with live output of background tasks`
 
 ### Task 7: README
 

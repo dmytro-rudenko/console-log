@@ -11,9 +11,9 @@ started: 2026-10-20
 Готово, коли мод встановлюється з цього репозиторію, показує вивід задачі наживо, прокручується до кінця і зупиняє опитування після завершення задачі.
 
 ## Now
-1. Building: хвилі 1–2 закриті — Tasks 1,2,3,7,4,5; 25 тестів зелені в harness.
-2. Для Task 6: нормалізувати пробіли в command ДО sanitize (sanitize склеює переноси рядків); topParts тепер обрізає right; tabWidth дзеркалить JSX-відступи вкладки.
-3. Далі: хвиля 3 — Task 6 (hooks/register.tsx + hooks/pane.test.tsx); після неї вже працює справжній `claude plugin test .`.
+1. Building: хвилі 1–3 закриті; `claude plugin test .` 28/28, validate без попереджень (усі gating-хуки з .catch).
+2. Task 6 після рев'ю: робота tool.call знята з критичного шляху (track у фоні, sh з timeoutMs 1000); pending-refresh замість пропуску; задачі субагентів пропускаються (agentId / backgroundEndsWithFinalResponse).
+3. Далі: хвиля 4 — Task 8 smoke: прибрати bg-tail з ~/.claude/dev-mods/<session>/, скопіювати плагін туди як console-log, запустити 3 Bash + Monitor, людина перевіряє ctrl+→/ctrl+← і життєвий цикл.
 
 ## Timeline
 
@@ -40,3 +40,9 @@ started: 2026-10-20
 - 18:11 ● cb6d218 chore(plan): close wave 1
 - 18:11 ● 4ebbf03 chore(journal): wave 1 closed
 - 18:19 ✎ Хвиля 2: життєвий цикл і верстка — чисті функції; topParts обрізає статус праворуч, щоб рядок рамки завжди мав ширину панелі
+- 18:19 ● eb9f92b feat(tasks): pure board transitions for the task lifecycle
+- 18:19 ● 6f17c1e feat(layout): pure frame, tab and status helpers
+- 18:19 ● 1c4d1ed chore(plan): close wave 2
+- 18:34 ● 3b80099 feat(console-log): pane with live output of background tasks
+- 18:34 ● b9be730 chore(plugin): describe the marketplace
+- 18:34 ✎ Хвиля 3: register.tsx — tool.call повертає результат одразу, трекінг у фоні; фінальний refresh не губиться (pending); задачі субагентів поза обсягом
