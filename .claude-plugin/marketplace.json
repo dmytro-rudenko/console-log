@@ -1,0 +1,5 @@
+{
+  "name": "console-log",
+  "owner": { "name": "dmytro-rudenko" },
+  "plugins": [{ "name": "console-log", "source": "./" }]
+}

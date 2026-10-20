@@ -1,0 +1,9 @@
+{
+  "name": "console-log",
+  "version": "0.1.0",
+  "description": "Live pane beside the chat with the last 200 lines of background Bash and Monitor tasks",
+  "author": { "name": "dmytro-rudenko" },
+  "repository": "https://github.com/dmytro-rudenko/console-log",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
