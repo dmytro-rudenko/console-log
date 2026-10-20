@@ -59,7 +59,7 @@
 **Interfaces:**
 - Produces: типи `ConsoleTask`, `Board`, `TaskNotification` з `../types`; `PluginState['console-log']` з ключами `tasks`, `selected`, `lines`, `pathMissing`, `readFailed`, `dismissed`, `hasCtrlArrows`.
 
-- [ ] **Step 1: write** `.claude-plugin/plugin.json`:
+- [x] **Step 1: write** `.claude-plugin/plugin.json`:
 ```json
 {
   "name": "console-log",
@@ -71,7 +71,7 @@
   "types": "./types/index.d.ts"
 }
 ```
-- [ ] **Step 2: write** `.claude-plugin/marketplace.json`:
+- [x] **Step 2: write** `.claude-plugin/marketplace.json`:
 ```json
 {
   "name": "console-log",
@@ -79,8 +79,8 @@
   "plugins": [{ "name": "console-log", "source": "./" }]
 }
 ```
-- [ ] **Step 3: write** `hooks/hooks.json`: `{ "modules": ["./register.tsx"] }`
-- [ ] **Step 4: write** `types/index.d.ts`:
+- [x] **Step 3: write** `hooks/hooks.json`: `{ "modules": ["./register.tsx"] }`
+- [x] **Step 4: write** `types/index.d.ts`:
 ```ts
 export type ConsoleTask = {
   id: string
@@ -112,7 +112,7 @@ declare module 'claude-code' {
   }
 }
 ```
-- [ ] **Step 5: write** `tsconfig.json` (для редактора після того, як engine покладе типи):
+- [x] **Step 5: write** `tsconfig.json` (для редактора після того, як engine покладе типи):
 ```json
 {
   "extends": "./.claude-plugin/types/tsconfig.json",
@@ -120,14 +120,14 @@ declare module 'claude-code' {
   "include": [".claude-plugin/types", "hooks", "types"]
 }
 ```
-- [ ] **Step 6: write** `.gitignore`:
+- [x] **Step 6: write** `.gitignore`:
 ```
 .claude-plugin/types/
 node_modules/
 *.log
 ```
-- [ ] **Step 7: run** `claude plugin validate .` — очікувано помилка лише про відсутній `hooks/register.tsx` (модуль з'явиться в Task 6). JSON-файли мають читатися без помилок.
-- [ ] **Step 8: commit** `chore(plugin): manifests, marketplace and state contract`
+- [x] **Step 7: run** `claude plugin validate .` — очікувано помилка лише про відсутній `hooks/register.tsx` (модуль з'явиться в Task 6). JSON-файли мають читатися без помилок.
+- [x] **Step 8: commit** `chore(plugin): manifests, marketplace and state contract`
 
 ### Task 2: `parseTaskNotification`
 
@@ -137,7 +137,7 @@ node_modules/
 **Interfaces:**
 - Produces: `parseTaskNotification(text: string): { id: string; status: string; exitCode?: number } | undefined` (тип повернення оголошено локально, структурно сумісний із `TaskNotification` Task 1).
 
-- [ ] **Step 1: write the failing test** `hooks/notification.test.ts`:
+- [x] **Step 1: write the failing test** `hooks/notification.test.ts`:
 ```ts
 import { expect, test } from 'claude-code/testing'
 
@@ -168,8 +168,8 @@ test('text that is not a notification', async () => {
   expect(parseTaskNotification('<task-id>x</task-id> without status')).toBeUndefined()
 })
 ```
-- [ ] **Step 2: run it, watch it fail** — `claude plugin test .` → fail: модуль `./notification` не знайдено.
-- [ ] **Step 3: implement** `hooks/notification.ts`:
+- [x] **Step 2: run it, watch it fail** — `claude plugin test .` → fail: модуль `./notification` не знайдено.
+- [x] **Step 3: implement** `hooks/notification.ts`:
 ```ts
 export function parseTaskNotification(text: string): { id: string; status: string; exitCode?: number } | undefined {
   const id = /<task-id>([^<]+)<\/task-id>/.exec(text)?.[1]?.trim()
@@ -179,8 +179,8 @@ export function parseTaskNotification(text: string): { id: string; status: strin
   return code === undefined ? { id, status } : { id, status, exitCode: Number(code) }
 }
 ```
-- [ ] **Step 4: run it, watch it pass** — `claude plugin test .` → 5 тестів notification pass.
-- [ ] **Step 5: commit** `feat(notification): parse background task notifications`
+- [x] **Step 4: run it, watch it pass** — `claude plugin test .` → 5 тестів notification pass.
+- [x] **Step 5: commit** `feat(notification): parse background task notifications`
 
 ### Task 3: `sanitize`
 
@@ -190,7 +190,7 @@ export function parseTaskNotification(text: string): { id: string; status: strin
 **Interfaces:**
 - Produces: `sanitize(text: string): string` — видаляє CSI, OSC (BEL/ST), DCS/SOS/PM/APC, решту `ESC x`, 8-бітні C1, потім усі C0 і DEL, окрім `\t`.
 
-- [ ] **Step 1: write the failing test** `hooks/sanitize.test.ts`:
+- [x] **Step 1: write the failing test** `hooks/sanitize.test.ts`:
 ```ts
 import { expect, test } from 'claude-code/testing'
 
@@ -217,8 +217,8 @@ test('keeps tab and unicode', async () => {
   expect(sanitize('✓\tтести пройшли ◐')).toBe('✓\tтести пройшли ◐')
 })
 ```
-- [ ] **Step 2: run it, watch it fail** — `claude plugin test .` → fail: модуль `./sanitize` не знайдено.
-- [ ] **Step 3: implement** `hooks/sanitize.ts`:
+- [x] **Step 2: run it, watch it fail** — `claude plugin test .` → fail: модуль `./sanitize` не знайдено.
+- [x] **Step 3: implement** `hooks/sanitize.ts`:
 ```ts
 const SEQUENCES = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[PX^_][^\x1b]*\x1b\\|\x1b[@-_]|\x9b[0-?]*[ -/]*[@-~]|[\x80-\x9f]/g
 const CONTROLS = /[\x00-\x08\x0a-\x1f\x7f]/g
@@ -227,8 +227,8 @@ export function sanitize(text: string): string {
   return text.replace(SEQUENCES, '').replace(CONTROLS, '')
 }
 ```
-- [ ] **Step 4: run it, watch it pass** — `claude plugin test .` → 4 тести sanitize pass.
-- [ ] **Step 5: commit** `feat(sanitize): strip terminal control sequences from output`
+- [x] **Step 4: run it, watch it pass** — `claude plugin test .` → 4 тести sanitize pass.
+- [x] **Step 5: commit** `feat(sanitize): strip terminal control sequences from output`
 
 ### Task 4: чисті переходи стану `tasks.ts`
 
@@ -873,8 +873,8 @@ export const register: Register = on => {
 **Depends on:** —
 **Interfaces:** —
 
-- [ ] **Step 1: write** `LICENSE` — стандартний текст MIT, `Copyright (c) 2026 dmytro-rudenko`.
-- [ ] **Step 2: write** `README.md` двома мовами (спочатку English, потім `## Українською` з тим самим змістом). Розділи й точний вміст:
+- [x] **Step 1: write** `LICENSE` — стандартний текст MIT, `Copyright (c) 2026 dmytro-rudenko`.
+- [x] **Step 2: write** `README.md` двома мовами (спочатку English, потім `## Українською` з тим самим змістом). Розділи й точний вміст:
   1. `# console-log` + один абзац: панель поруч із чатом з останніми 200 рядками кожної фонової Bash/Monitor-задачі, оновлення щосекунди.
   2. `## Install` — блок коду `/plugin install console-log --marketplace dmytro-rudenko/console-log` (з prompt'у; далі `y` і scope), і з shell: `claude plugin install console-log --marketplace dmytro-rudenko/console-log`.
   3. `## Keys` — пояснення, що плагін не може постачати клавіші, і блок для `~/.claude/keybindings.json` (злити з наявним масивом `bindings`):
@@ -891,8 +891,8 @@ export const register: Register = on => {
      Далі: `ctrl+→` з промпту — фокус на першу задачу; `ctrl+→` — наступна (на останній стоїть); `ctrl+←` — попередня, на першій — назад у промпт. Без фрагмента: `ctrl+x tab`, `←`/`→`, `esc`. Компроміс: `ctrl+→` у промпті більше не стрибає на слово (лишається `alt+→`).
   4. `## Behaviour` — `◐` running, `✓` зникає за 10 с, `✗`/`■` лишається до перегляду; без задач панель закривається; закрита хрестиком — до `/console-log`; панель збоку з терміналу ≥110 колонок.
   5. `## Limits` — лише фонові задачі, запущені після завантаження мода; ANSI-кольори вирізаються; рамку панелі (сірі рядки, `✕`) малює Claude Code.
-- [ ] **Step 3: run** `claude plugin validate .` — README не впливає; пропустити, якщо Task 6 ще не злитий.
-- [ ] **Step 4: commit** `docs(readme): install, keys and behaviour`
+- [x] **Step 3: run** `claude plugin validate .` — README не впливає; пропустити, якщо Task 6 ще не злитий.
+- [x] **Step 4: commit** `docs(readme): install, keys and behaviour`
 
 ### Task 8: smoke у живій сесії
 

@@ -31,3 +31,9 @@ started: 2026-10-20
 - 17:54 ✎ Публічний репо створено, draft PR #1; скріншоти прибрано з історії до пушу; у спеку додано повну sanitize після security review
 - 17:54 ● d76c646 chore(journal): shaping done, draft PR open
 - 18:01 ✎ План схвалено: 8 задач у 4 хвилях; чисті модулі (notification/sanitize/tasks/layout) окремо від register.tsx — prompt.submit не тестується kit-ом, тому логіка винесена в чисті функції
+- 18:02 ● ce4ded3 docs(plan): console-log implementation plan
+- 18:11 ● 4c8e082 chore(plugin): manifests, marketplace and state contract
+- 18:11 ● 1e438c5 feat(notification): parse background task notifications
+- 18:11 ● 9cc76ed feat(sanitize): strip terminal control sequences from output
+- 18:11 ● a381212 docs(readme): install, keys and behaviour
+- 18:11 ✎ Хвиля 1: exit code лише з кінця <summary>; sanitize прибирає й nF/Fp/Fs escapes (\x1b(B); обрізаний escape на межі шматка лишає друковний хвіст — прийнято
