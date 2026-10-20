@@ -35,6 +35,7 @@ Engine не дає моду ні потоку виводу фонової зад
 hooks/hooks.json                  { "modules": ["./register.tsx"] }
 hooks/register.tsx                хуки й малювання
 hooks/notification.ts             parseTaskNotification
+hooks/sanitize.ts                 вирізання керуючих послідовностей
 hooks/tasks.ts                    чисті переходи стану
 hooks/*.test.ts(x)                тести claude plugin test
 types/index.d.ts                  контракт $.state
@@ -48,6 +49,17 @@ README.md                         українська + англійська
 **`hooks/notification.ts`**
 - Що робить: `parseTaskNotification(text: string): { id: string; status: string; exitCode?: number } | undefined`.
 - Як працює: регулярні вирази `/<task-id>([^<]+)<\/task-id>/`, `/<status>([^<]+)<\/status>/`, `/exit code (-?\d+)/`. Без `id` або `status` повертає `undefined`.
+- Залежності: жодних.
+
+**`hooks/sanitize.ts`**
+- Що робить: `sanitize(text: string): string`. Видаляє всі керуючі послідовності терміналу, а не лише CSI:
+  - CSI `\x1b\[[0-?]*[ -/]*[@-~]`;
+  - OSC `\x1b\][^\x07\x1b]*(\x07|\x1b\\)`;
+  - DCS / SOS / PM / APC `\x1b[PX^_][^\x1b]*\x1b\\`;
+  - решта двосимвольних `\x1b[@-_]`;
+  - 8-бітні C1 `[\x80-\x9f]`;
+  - потім усі C0 і DEL, окрім `\t` (`[\x00-\x08\x0a-\x1f\x7f]`, бо рядки вже розбито за `\n`).
+- Як застосовується: до кожного рядка лога, а також до `command` і `label` перед тим, як їх зберегти в стан. Інакше OSC 8, OSC 52 (буфер обміну) чи зміна заголовка вікна з виводу або з опису задачі потрапили б у термінал користувача.
 - Залежності: жодних.
 
 **`hooks/tasks.ts`**
@@ -82,9 +94,9 @@ README.md                         українська + англійська
 - Таймер `$.clock.every(1000)`:
   - виконує `tail -n 200 <path>` для вибраної задачі (`timeoutMs: 2000`);
   - пропускає такт, якщо попередній `tail` ще не відповів;
-  - вирізає ANSI-коди (`/\x1b\[[0-9;?]*[ -/]*[@-~]/g`) і обрізає кожен рядок до 500 символів;
+  - пропускає кожен рядок через `sanitize` і лише потім обрізає до 500 символів;
   - зупиняється, коли не лишилось задач без `status`.
-- Залежності: `notification.ts`, `tasks.ts`, `$.process`, `$.clock`, `$.ui`, `$.fs`, `$.env`.
+- Залежності: `notification.ts`, `sanitize.ts`, `tasks.ts`, `$.process`, `$.clock`, `$.ui`, `$.fs`, `$.env`.
 
 **`types/index.d.ts`** — `PluginState['console-log']`:
 - `tasks: ConsoleTask[]`, де `ConsoleTask = { id; kind: 'shell'|'monitor'; command; label?; path?; startedAt; status?; exitCode?; viewed? }`;
@@ -168,6 +180,7 @@ README.md                         українська + англійська
 - `claude plugin validate .` без помилок.
 - `tsc -p .` без помилок.
 - `claude plugin test .`:
+  - `sanitize.test.ts`: CSI-колір, OSC 8-посилання з BEL і з ST, OSC 52, DCS, 8-бітний CSI `\x9b`, `\r`, `\x07` зникають; `\t` і юнікод (`✓`, кирилиця) лишаються;
   - `notification.test.ts`: зразки з цієї сесії — `completed (exit code 0)`, `failed with exit code 1`, `failed with exit code 3`, `completed (exit code -1)`, Monitor `stream ended` без коду, текст, що не є сповіщенням;
   - `tasks.test.ts`: ліміт 20; `applyNotification` з `viewed` для вибраної й невибраної; `selectTask` видаляє переглянуту ✗ при переході; `dropTask` зберігає вибір за id;
   - `pane.test.tsx` (surface `terminal`, `bodyColumns: 100`, `bodyRows: 30`): кожен рядок рамок рівно `W` символів; заголовки `BACKGROUND` / `OUTPUT`; позначки для кожного статусу; лог доповнено до `R − 5`; підказка при `isFocused` і при `hasCtrlArrows: false`.
