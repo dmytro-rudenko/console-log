@@ -1,7 +1,7 @@
 ---
 branch: feat/console-log-mod
 spec: docs/sdd/specs/2026-10-20-console-log-mod.md
-plan: -
+plan: docs/sdd/plans/2026-10-20-console-log-mod.md
 status: in-progress
 started: 2026-10-20
 ---
@@ -11,9 +11,9 @@ started: 2026-10-20
 Готово, коли мод встановлюється з цього репозиторію, показує вивід задачі наживо, прокручується до кінця і зупиняє опитування після завершення задачі.
 
 ## Now
-1. Shaping завершено: spec docs/sdd/specs/2026-10-20-console-log-mod.md, прототип decision.md підписано; репо github.com/dmytro-rudenko/console-log (public), draft PR #1.
-2. Чекаємо, що користувач перегляне специфікацію; правки — лише в ній.
-3. Далі: після схвалення — leonard (план). Зберегти: лише ctrl+→/ctrl+←, /console-log без аргументів, повна sanitize (CSI/OSC/DCS/C0/C1), скріншоти не комітити (робочі назви).
+1. Building (wolowitz). План docs/sdd/plans/2026-10-20-console-log-mod.md схвалено: 8 задач, хвилі 1:{1,2,3,7} 2:{4,5} 3:{6} 4:{8 smoke}.
+2. Ще нічого не реалізовано.
+3. Далі: хвиля 1. Перевірка кожної задачі — `claude plugin test .`; type-check командою з Global constraints. Зберегти: без коментарів у коді; скріншоти не комітити.
 
 ## Timeline
 
@@ -29,3 +29,5 @@ started: 2026-10-20
 - 17:53 ● 09c1362 docs(spec): console-log background output pane
 - 17:53 ● 2a5ac26 chore(journal): start console-log mod journal
 - 17:54 ✎ Публічний репо створено, draft PR #1; скріншоти прибрано з історії до пушу; у спеку додано повну sanitize після security review
+- 17:54 ● d76c646 chore(journal): shaping done, draft PR open
+- 18:01 ✎ План схвалено: 8 задач у 4 хвилях; чисті модулі (notification/sanitize/tasks/layout) окремо від register.tsx — prompt.submit не тестується kit-ом, тому логіка винесена в чисті функції
