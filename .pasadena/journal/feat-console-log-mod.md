@@ -11,9 +11,9 @@ started: 2026-10-20
 Готово, коли мод встановлюється з цього репозиторію, показує вивід задачі наживо, прокручується до кінця і зупиняє опитування після завершення задачі.
 
 ## Now
-1. Building (wolowitz). План docs/sdd/plans/2026-10-20-console-log-mod.md схвалено: 8 задач, хвилі 1:{1,2,3,7} 2:{4,5} 3:{6} 4:{8 smoke}.
-2. Ще нічого не реалізовано.
-3. Далі: хвиля 1. Перевірка кожної задачі — `claude plugin test .`; type-check командою з Global constraints. Зберегти: без коментарів у коді; скріншоти не комітити.
+1. Building: хвиля 1/4 закрита — Tasks 1,2,3,7 (4c8e082 1e438c5 9cc76ed a381212), 12 тестів зелені в harness.
+2. Ruling: `claude plugin test .` неможливий до Task 6 (немає register.tsx) — тести хвиль 1–2 у тимчасовому harness із заглушкою register.tsx. Для Task 6: нормалізувати пробіли в command ДО sanitize (sanitize склеює переноси рядків).
+3. Далі: хвиля 2 — Tasks 4 (hooks/tasks.ts) і 5 (hooks/layout.ts) паралельно, перевірка тим самим harness.
 
 ## Timeline
 
@@ -37,3 +37,4 @@ started: 2026-10-20
 - 18:11 ● 9cc76ed feat(sanitize): strip terminal control sequences from output
 - 18:11 ● a381212 docs(readme): install, keys and behaviour
 - 18:11 ✎ Хвиля 1: exit code лише з кінця <summary>; sanitize прибирає й nF/Fp/Fs escapes (\x1b(B); обрізаний escape на межі шматка лишає друковний хвіст — прийнято
+- 18:11 ● cb6d218 chore(plan): close wave 1
