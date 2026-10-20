@@ -31,3 +31,10 @@ test('exit code mentioned inside the description does not win', async () => {
   expect(parseTaskNotification(note('b5', 'completed', 'Background command "verify exit code 2 on bad args" completed (exit code 0)'))).toEqual({ id: 'b5', status: 'completed', exitCode: 0 })
   expect(parseTaskNotification(note('m2', 'completed', 'Monitor "exit code 5 watcher" stream ended'))).toEqual({ id: 'm2', status: 'completed' })
 })
+
+test('id and status that are not plain tokens are rejected', async () => {
+  expect(parseTaskNotification(note('b6\x1b]52;c;x\x07', 'completed', 'Background command "a" completed (exit code 0)'))).toBeUndefined()
+  expect(parseTaskNotification(note('b7', 'failed\x1b[2J', 'Background command "a" failed with exit code 1'))).toBeUndefined()
+  expect(parseTaskNotification(note('b8', 'Failed!', 'Background command "a" failed with exit code 1'))).toBeUndefined()
+  expect(parseTaskNotification(note('a'.repeat(65), 'completed', 'Background command "a" completed (exit code 0)'))).toBeUndefined()
+})
