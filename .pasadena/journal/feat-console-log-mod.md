@@ -24,3 +24,4 @@ started: 2026-10-20
 - 17:49 ● a6e2340 docs(proto): console-log pane prototype and decision
 - 17:51 ● 975d84e docs(spec): console-log background output pane
 - 17:51 ✎ Специфікацію написано й закомічено: docs/sdd/specs/2026-10-20-console-log-mod.md
+- 17:51 ● 67a04bb chore(journal): point at console-log spec
