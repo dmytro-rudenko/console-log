@@ -239,7 +239,7 @@ export function sanitize(text: string): string {
 - Consumes: `ConsoleTask`, `Board`, `TaskNotification` (Task 1).
 - Produces: `MAX_TASKS`, `addTask(board, task)`, `applyNotification(board, n)`, `dropTask(board, id)`, `selectTask(board, i)`, `hasRunning(board)` — усі повертають новий `Board`/`boolean`, вхід не мутують.
 
-- [ ] **Step 1: write the failing test** `hooks/tasks.test.ts`:
+- [x] **Step 1: write the failing test** `hooks/tasks.test.ts`:
 ```ts
 import { expect, test } from 'claude-code/testing'
 
@@ -290,8 +290,8 @@ test('hasRunning is true while any task has no status', async () => {
   expect(hasRunning({ tasks: [t('a', { status: 'failed' })], selected: 0 })).toBe(false)
 })
 ```
-- [ ] **Step 2: run it, watch it fail** — `claude plugin test .` → fail: модуль `./tasks` не знайдено.
-- [ ] **Step 3: implement** `hooks/tasks.ts`:
+- [x] **Step 2: run it, watch it fail** — `claude plugin test .` → fail: модуль `./tasks` не знайдено.
+- [x] **Step 3: implement** `hooks/tasks.ts`:
 ```ts
 import type { Board, ConsoleTask, TaskNotification } from '../types'
 
@@ -337,8 +337,8 @@ export function hasRunning(board: Board): boolean {
 }
 ```
   Примітка до тесту `applyNotification`: `toEqual` з `{ ..., exitCode: 1, viewed: true }` — порівняння структурне; `exitCode: undefined` у `completed` без коду теж допустиме.
-- [ ] **Step 4: run it, watch it pass** — `claude plugin test .` → 5 тестів tasks pass.
-- [ ] **Step 5: commit** `feat(tasks): pure board transitions for the task lifecycle`
+- [x] **Step 4: run it, watch it pass** — `claude plugin test .` → 5 тестів tasks pass.
+- [x] **Step 5: commit** `feat(tasks): pure board transitions for the task lifecycle`
 
 ### Task 5: чисті функції верстки `layout.ts`
 
@@ -350,7 +350,7 @@ export function hasRunning(board: Board): boolean {
 - Produces: `LABEL_MAX`, `fit(text, width)`, `topParts(title, right, width) → { fill, right }`, `bottomParts(hint, width) → { hint, fill }`, `age(startedAt, now)`, `mark(task) → { glyph, color }`, `statusText(task)`, `tabLabel(task)`, `tabWidth(task, now)`, `tabWindow(widths, selected, budget) → { lo, hi }`, `paneHint(focused, hasCtrlArrows)`.
   Інваріант: `'╭─ ' + title + fill + right + '─╮'` має довжину рівно `width`; `'╰─' + hint + fill` — рівно `width` (fill закінчується на `╯`).
 
-- [ ] **Step 1: write the failing test** `hooks/layout.test.ts`:
+- [x] **Step 1: write the failing test** `hooks/layout.test.ts`:
 ```ts
 import { expect, test } from 'claude-code/testing'
 
@@ -412,8 +412,8 @@ test('pane hint depends on focus and on the ctrl+arrow binding', async () => {
   expect(paneHint(false, false)).toBe('ctrl+x tab focus')
 })
 ```
-- [ ] **Step 2: run it, watch it fail** — `claude plugin test .` → fail: модуль `./layout` не знайдено.
-- [ ] **Step 3: implement** `hooks/layout.ts`:
+- [x] **Step 2: run it, watch it fail** — `claude plugin test .` → fail: модуль `./layout` не знайдено.
+- [x] **Step 3: implement** `hooks/layout.ts`:
 ```ts
 import type { ConsoleTask } from '../types'
 
@@ -486,8 +486,8 @@ export function paneHint(focused: boolean, hasCtrlArrows: boolean): string {
   return hasCtrlArrows ? 'ctrl+→ focus' : 'ctrl+x tab focus'
 }
 ```
-- [ ] **Step 4: run it, watch it pass** — `claude plugin test .` → 7 тестів layout pass.
-- [ ] **Step 5: commit** `feat(layout): pure frame, tab and status helpers`
+- [x] **Step 4: run it, watch it pass** — `claude plugin test .` → 7 тестів layout pass.
+- [x] **Step 5: commit** `feat(layout): pure frame, tab and status helpers`
 
 ### Task 6: модуль хуків `register.tsx` і тест панелі
 

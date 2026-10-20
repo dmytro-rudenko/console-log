@@ -11,9 +11,9 @@ started: 2026-10-20
 Готово, коли мод встановлюється з цього репозиторію, показує вивід задачі наживо, прокручується до кінця і зупиняє опитування після завершення задачі.
 
 ## Now
-1. Building: хвиля 1/4 закрита — Tasks 1,2,3,7 (4c8e082 1e438c5 9cc76ed a381212), 12 тестів зелені в harness.
-2. Ruling: `claude plugin test .` неможливий до Task 6 (немає register.tsx) — тести хвиль 1–2 у тимчасовому harness із заглушкою register.tsx. Для Task 6: нормалізувати пробіли в command ДО sanitize (sanitize склеює переноси рядків).
-3. Далі: хвиля 2 — Tasks 4 (hooks/tasks.ts) і 5 (hooks/layout.ts) паралельно, перевірка тим самим harness.
+1. Building: хвилі 1–2 закриті — Tasks 1,2,3,7,4,5; 25 тестів зелені в harness.
+2. Для Task 6: нормалізувати пробіли в command ДО sanitize (sanitize склеює переноси рядків); topParts тепер обрізає right; tabWidth дзеркалить JSX-відступи вкладки.
+3. Далі: хвиля 3 — Task 6 (hooks/register.tsx + hooks/pane.test.tsx); після неї вже працює справжній `claude plugin test .`.
 
 ## Timeline
 
@@ -38,3 +38,5 @@ started: 2026-10-20
 - 18:11 ● a381212 docs(readme): install, keys and behaviour
 - 18:11 ✎ Хвиля 1: exit code лише з кінця <summary>; sanitize прибирає й nF/Fp/Fs escapes (\x1b(B); обрізаний escape на межі шматка лишає друковний хвіст — прийнято
 - 18:11 ● cb6d218 chore(plan): close wave 1
+- 18:11 ● 4ebbf03 chore(journal): wave 1 closed
+- 18:19 ✎ Хвиля 2: життєвий цикл і верстка — чисті функції; topParts обрізає статус праворуч, щоб рядок рамки завжди мав ширину панелі
