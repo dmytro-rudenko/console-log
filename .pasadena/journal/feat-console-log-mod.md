@@ -11,9 +11,9 @@ started: 2026-10-20
 Готово, коли мод встановлюється з цього репозиторію, показує вивід задачі наживо, прокручується до кінця і зупиняє опитування після завершення задачі.
 
 ## Now
-1. Shaping (sheldon, Architectural). Дизайн-секції 1–3 погоджено; прототип UI підписано — docs/sdd/proto/console-log-pane/decision.md (варіант A, v2-final).
-2. Зупинились перед написанням специфікації. Відкрите: ctrl+→/ctrl+← живуть лише в ~/.claude/keybindings.json користувача — у спеці README-фрагмент + адаптивна підказка (ctrl+x tab, якщо не прив'язано).
-3. Далі: docs/sdd/specs/2026-10-20-console-log-mod.md → коміт → публічний репо dmytro-rudenko/console-log (користувач погодив Public) → draft PR. Зберегти: команда /console-log без аргументів; жодного іншого керування, крім ctrl+стрілок.
+1. Shaping завершено: spec docs/sdd/specs/2026-10-20-console-log-mod.md, прототип decision.md підписано; репо github.com/dmytro-rudenko/console-log (public), draft PR #1.
+2. Чекаємо, що користувач перегляне специфікацію; правки — лише в ній.
+3. Далі: після схвалення — leonard (план). Зберегти: лише ctrl+→/ctrl+←, /console-log без аргументів, повна sanitize (CSI/OSC/DCS/C0/C1), скріншоти не комітити (робочі назви).
 
 ## Timeline
 
@@ -25,3 +25,7 @@ started: 2026-10-20
 - 17:51 ● 975d84e docs(spec): console-log background output pane
 - 17:51 ✎ Специфікацію написано й закомічено: docs/sdd/specs/2026-10-20-console-log-mod.md
 - 17:51 ● 67a04bb chore(journal): point at console-log spec
+- 17:53 ● 4890214 docs(proto): console-log pane prototype and decision
+- 17:53 ● 09c1362 docs(spec): console-log background output pane
+- 17:53 ● 2a5ac26 chore(journal): start console-log mod journal
+- 17:54 ✎ Публічний репо створено, draft PR #1; скріншоти прибрано з історії до пушу; у спеку додано повну sanitize після security review
