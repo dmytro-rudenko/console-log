@@ -1,0 +1,26 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-keybindings.json",
+  "$docs": "https://code.claude.com/docs/en/keybindings",
+  "bindings": [
+    {
+      "context": "Chat",
+      "bindings": {
+        "ctrl+right": "abovePrompt:focus"
+      }
+    },
+    {
+      "context": "AbovePrompt",
+      "bindings": {
+        "ctrl+right": "abovePrompt:next",
+        "ctrl+left": "abovePrompt:previous"
+      }
+    },
+    {
+      "context": "Pane",
+      "bindings": {
+        "ctrl+right": "abovePrompt:next",
+        "ctrl+left": "abovePrompt:previous"
+      }
+    }
+  ]
+}
