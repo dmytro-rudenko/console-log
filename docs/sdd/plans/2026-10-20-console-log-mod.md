@@ -28,7 +28,7 @@
 
 ## Global constraints
 
-- Корінь worktree: `/home/pc/projects/console-log/.claude/worktrees/console-log-mod`, гілка `feat/console-log-mod`. Корінь репо = корінь плагіна.
+- Корінь worktree: `<repo root>`, гілка `feat/console-log-mod`. Корінь репо = корінь плагіна.
 - **Жодних коментарів у коді**, окрім обмежень, яких код не показує (правило користувача; не наслідувати прототип).
 - Модуль — ES module без Node/DOM; все зовнішнє — через `$`. JSX компілюється проти глобального `h`; елементи — `const { Box, Text, Button } = $.ui.resolve(e)`.
 - Правила `claude plugin validate`: `$` передається лише у функції, оголошені на верхньому рівні файлу (function declaration); ідентифікатор `on` не можна перевизначати (жодного `const on = …`); `$` завжди `$.noun.method(...)`.
@@ -38,7 +38,7 @@
 - Розміри — лише з `e.props.bodyColumns` (W) і `e.props.scroll.bodyRows` (R), ніколи з `e.viewport`.
 - Type-check (немає `.claude-plugin/types`, поки engine не вантажив мод):
   ```bash
-  T=$(ls -t /tmp/claude-1000/bundled-skills/*/*/plugin-authoring/types/claude-code.d.ts | head -1)
+  T=$(ls -t $TMPDIR/claude-<uid>/bundled-skills/*/*/plugin-authoring/types/claude-code.d.ts | head -1)
   S=$(mktemp -d); cat > $S/tsconfig.json <<EOF
   { "compilerOptions": { "target": "es2023", "lib": ["es2023"], "types": [], "module": "esnext", "moduleResolution": "bundler", "strict": true, "noUncheckedIndexedAccess": true, "noEmit": true, "skipLibCheck": true, "jsx": "react", "jsxFactory": "h", "jsxFragmentFactory": "Fragment" },
     "include": ["$T", "$PWD/hooks", "$PWD/types"] }
@@ -492,7 +492,7 @@ export function paneHint(focused: boolean, hasCtrlArrows: boolean): string {
 ### Task 6: модуль хуків `register.tsx` і тест панелі
 
 **Writes:** `hooks/register.tsx`, `hooks/pane.test.tsx`
-**Reads:** `hooks/notification.ts`, `hooks/sanitize.ts`, `hooks/tasks.ts`, `hooks/layout.ts`, `types/index.d.ts`, `docs/sdd/proto/console-log-pane/v2-final/register.tsx`, `/tmp/claude-1000/bundled-skills/*/*/plugin-authoring/examples/pane.test.tsx`
+**Reads:** `hooks/notification.ts`, `hooks/sanitize.ts`, `hooks/tasks.ts`, `hooks/layout.ts`, `types/index.d.ts`, `docs/sdd/proto/console-log-pane/v2-final/register.tsx`, `$TMPDIR/claude-<uid>/bundled-skills/*/*/plugin-authoring/examples/pane.test.tsx`
 **Depends on:** Tasks 1, 2, 3, 4, 5
 **Interfaces:**
 - Consumes: `parseTaskNotification` (Task 2); `sanitize` (Task 3); `addTask`, `applyNotification`, `dropTask`, `selectTask`, `hasRunning` (Task 4); `fit`, `topParts`, `bottomParts`, `age`, `mark`, `statusText`, `tabLabel`, `tabWidth`, `tabWindow`, `paneHint` (Task 5); типи з `../types` (Task 1).
@@ -901,8 +901,8 @@ export const register: Register = on => {
 **Depends on:** Tasks 6, 7
 **Interfaces:** —
 
-- [x] **Step 1:** видалити прототип із теки модів сесії, щоб `/console-log` не реєструвався двічі: `rm -rf /home/pc/.claude/dev-mods/<поточна session id>/bg-tail` (прототип збережено в `docs/sdd/proto/…/v2-final`).
-- [x] **Step 2:** скопіювати плагін у теку модів сесії: `rsync -a --exclude .git --exclude docs --exclude .pasadena ./ /home/pc/.claude/dev-mods/<session id>/console-log/`; дочекатися reload (рядок `console-log: This mod … loaded`).
+- [x] **Step 1:** видалити прототип із теки модів сесії, щоб `/console-log` не реєструвався двічі: `rm -rf ~/.claude/dev-mods/<поточна session id>/bg-tail` (прототип збережено в `docs/sdd/proto/…/v2-final`).
+- [x] **Step 2:** скопіювати плагін у теку модів сесії: `rsync -a --exclude .git --exclude docs --exclude .pasadena ./ ~/.claude/dev-mods/<session id>/console-log/`; дочекатися reload (рядок `console-log: This mod … loaded`).
 - [x] **Step 3:** запустити три фонові Bash (8 с успіх, 25 с `exit 1`, 2 хв довгий) і Monitor на 15 с — панель відкривається, 4 вкладки, лог оновлюється щосекунди, Monitor підписано `monitor: …`.
 - [x] **Step 4:** людина перевіряє `ctrl+→` (перша задача), `ctrl+→` до останньої (стоїть), `ctrl+←` назад і на першій — вихід у промпт; ✓ зникає за 10 с; ✗ зникає після перегляду; без задач панель закривається; закрита `✕` не відкривається до `/console-log`.
 - [x] **Step 5:** знахідки — окремими fix-комітами в Task 6/7 файлах; після проходу видалити тимчасову копію з dev-mods.
