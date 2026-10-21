@@ -3,7 +3,7 @@ import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import type { Board, ConsoleTask } from '../types'
 import { age, bottomParts, fit, mark, paneHint, statusText, tabLabel, tabWidth, tabWindow, topParts } from './layout'
-import { parseTaskNotification } from './notification'
+import { parseBashInput, parseTaskNotification, parseUserBackground } from './notification'
 import { sanitize } from './sanitize'
 import { addTask, applyNotification, dropTask, expireTasks, hasRunning, selectTask } from './tasks'
 
@@ -32,6 +32,7 @@ let timer: Timer | undefined
 let busy = false
 let pending = false
 let chain: Promise<unknown> = Promise.resolve()
+let lastBashInput: string | undefined
 
 async function board($: EngineInterface): Promise<Board> {
   return { tasks: await read($, tasks), selected: await read($, selected) }
@@ -168,12 +169,17 @@ async function findOutput($: EngineInterface, id: string): Promise<string | unde
   return wide.stdout.trim() || undefined
 }
 
-async function track($: EngineInterface, seed: Omit<ConsoleTask, 'path' | 'startedAt' | 'deadline'>, timeoutMs: number | undefined) {
+async function track(
+  $: EngineInterface,
+  seed: Omit<ConsoleTask, 'path' | 'startedAt' | 'deadline'>,
+  timeoutMs: number | undefined,
+  known?: string,
+) {
   tick($)
   const startedAt = await $.clock.now()
   const deadline = timeoutMs === undefined ? undefined : startedAt + timeoutMs
   await mutate($, b => addTask(b, { ...seed, startedAt, deadline }))
-  const path = await findOutput($, seed.id).catch(() => undefined)
+  const path = known ?? (await findOutput($, seed.id).catch(() => undefined))
   if (path) await mutate($, b => ({ ...b, tasks: b.tasks.map(x => (x.id === seed.id ? { ...x, path } : x)) }))
   await refresh($)
   await openPane($)
@@ -239,6 +245,20 @@ export const register: Register = on => {
     const timeout = e.tool === 'Monitor' ? monitorTimeout(r.timeoutMs, e.timeout_ms, r.persistent) : undefined
     void track($, seed, timeout).catch(() => undefined)
     return ran
+  }).catch(($, e, next) => next(e))
+
+  on('session.append', async ($, e, next) => {
+    if (e.agentId !== undefined || e.message.type !== 'user') return next(e)
+    const text = e.message.content.map(c => (c.type === 'text' ? c.text : '')).join('\n')
+    const input = parseBashInput(text)
+    if (input) lastBashInput = input
+    const bg = parseUserBackground(text)
+    if (bg && !(await board($)).tasks.some(x => x.id === bg.id)) {
+      const command = clean(lastBashInput ?? bg.id)
+      lastBashInput = undefined
+      void track($, { id: bg.id, kind: 'shell', command }, undefined, bg.path).catch(() => undefined)
+    }
+    return next(e)
   }).catch(($, e, next) => next(e))
 
   on('prompt.submit', async ($, e, next) => {

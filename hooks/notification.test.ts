@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { parseTaskNotification } from './notification'
+import { parseBashInput, parseTaskNotification, parseUserBackground } from './notification'
 
 const note = (id: string, status: string, summary: string) =>
   `<task-notification>\n<task-id>${id}</task-id>\n<tool-use-id>toolu_1</tool-use-id>\n<output-file>/tmp/claude-1000/p/s/tasks/${id}.output</output-file>\n<status>${status}</status>\n<summary>${summary}</summary>\n</task-notification>`
@@ -37,4 +37,17 @@ test('id and status that are not plain tokens are rejected', async () => {
   expect(parseTaskNotification(note('b7', 'failed\x1b[2J', 'Background command "a" failed with exit code 1'))).toBeUndefined()
   expect(parseTaskNotification(note('b8', 'Failed!', 'Background command "a" failed with exit code 1'))).toBeUndefined()
   expect(parseTaskNotification(note('a'.repeat(65), 'completed', 'Background command "a" completed (exit code 0)'))).toBeUndefined()
+})
+
+test('bash mode input is read from its tag', async () => {
+  expect(parseBashInput("<bash-input> ssh host 'bash -s' < x.sh</bash-input>")).toBe("ssh host 'bash -s' < x.sh")
+  expect(parseBashInput('<bash-input>  </bash-input>')).toBeUndefined()
+  expect(parseBashInput('plain prompt')).toBeUndefined()
+})
+
+test('a manually backgrounded shell yields its id and output path', async () => {
+  const row =
+    '<bash-stdout>Command was manually backgrounded by user with ID: by06tu3fc. Output is being written to: /tmp/claude-1000/p/s/tasks/by06tu3fc.output.</bash-stdout><bash-stderr></bash-stderr>'
+  expect(parseUserBackground(row)).toEqual({ id: 'by06tu3fc', path: '/tmp/claude-1000/p/s/tasks/by06tu3fc.output' })
+  expect(parseUserBackground('<bash-stdout>done</bash-stdout>')).toBeUndefined()
 })
