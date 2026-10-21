@@ -10,11 +10,7 @@ export function addTask(board: Board, task: ConsoleTask): Board {
 export function applyNotification(board: Board, n: TaskNotification): Board {
   const at = board.tasks.findIndex(x => x.id === n.id)
   if (at < 0) return board
-  const tasks = board.tasks.map((x, i) =>
-    i === at
-      ? { ...x, status: n.status, exitCode: n.exitCode, viewed: n.status !== 'completed' && i === board.selected }
-      : x,
-  )
+  const tasks = board.tasks.map((x, i) => (i === at ? { ...x, status: n.status, exitCode: n.exitCode, viewed: false } : x))
   return { ...board, tasks }
 }
 
@@ -39,4 +35,12 @@ export function selectTask(board: Board, i: number): Board {
 
 export function hasRunning(board: Board): boolean {
   return board.tasks.some(x => !x.status)
+}
+
+export function expireTasks(board: Board, now: number, graceMs: number): Board {
+  if (!board.tasks.some(x => !x.status && x.deadline !== undefined && x.deadline + graceMs < now)) return board
+  const tasks = board.tasks.map(x =>
+    !x.status && x.deadline !== undefined && x.deadline + graceMs < now ? { ...x, status: 'expired' } : x,
+  )
+  return { ...board, tasks }
 }

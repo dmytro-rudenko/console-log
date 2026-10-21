@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Board, ConsoleTask } from '../types'
-import { addTask, applyNotification, dropTask, hasRunning, MAX_TASKS, selectTask } from './tasks'
+import { addTask, applyNotification, dropTask, expireTasks, hasRunning, MAX_TASKS, selectTask } from './tasks'
 
 const t = (id: string, extra: Partial<ConsoleTask> = {}): ConsoleTask => ({ id, kind: 'shell', command: id, startedAt: 0, ...extra })
 const empty: Board = { tasks: [], selected: -1 }
@@ -14,15 +14,37 @@ test('addTask appends, selects the new task and keeps the last 20', async () => 
   expect(b.selected).toBe(MAX_TASKS - 1)
 })
 
-test('applyNotification marks viewed only for the selected non-completed task', async () => {
+test('applyNotification never marks a task viewed, even the selected one', async () => {
   const b = addTask(addTask(empty, t('a')), t('b'))
   const failedSelected = applyNotification(b, { id: 'b', status: 'failed', exitCode: 1 })
-  expect(failedSelected.tasks[1]).toEqual({ ...t('b'), status: 'failed', exitCode: 1, viewed: true })
+  expect(failedSelected.tasks[1]).toEqual({ ...t('b'), status: 'failed', exitCode: 1, viewed: false })
   const failedOther = applyNotification(b, { id: 'a', status: 'failed', exitCode: 2 })
   expect(failedOther.tasks[0]?.viewed).toBe(false)
   const done = applyNotification(b, { id: 'b', status: 'completed', exitCode: 0 })
   expect(done.tasks[1]?.viewed).toBe(false)
   expect(applyNotification(b, { id: 'zz', status: 'failed' })).toBe(b)
+})
+
+test('a failed task selected when it fails survives moving away once, and goes after a visit', async () => {
+  let b: Board = { tasks: [t('a'), t('b')], selected: 0 }
+  b = applyNotification(b, { id: 'a', status: 'failed', exitCode: 1 })
+  b = selectTask(b, 1)
+  expect(b.tasks.map(x => x.id)).toEqual(['a', 'b'])
+  b = selectTask(b, 0)
+  expect(b.tasks[0]?.viewed).toBe(true)
+  b = selectTask(b, 1)
+  expect(b.tasks.map(x => x.id)).toEqual(['b'])
+})
+
+test('expireTasks marks running tasks past deadline plus grace as expired', async () => {
+  const b: Board = {
+    tasks: [t('a', { deadline: 1000 }), t('b', { deadline: 9000 }), t('c'), t('d', { deadline: 1000, status: 'failed' })],
+    selected: 0,
+  }
+  const next = expireTasks(b, 7000, 5000)
+  expect(next.tasks.map(x => x.status)).toEqual(['expired', undefined, undefined, 'failed'])
+  expect(next.selected).toBe(0)
+  expect(expireTasks(b, 6000, 5000).tasks[0]?.status).toBeUndefined()
 })
 
 test('selectTask marks a finished target viewed and drops the viewed task it leaves', async () => {

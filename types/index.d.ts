@@ -5,6 +5,7 @@ export type ConsoleTask = {
   label?: string
   path?: string
   startedAt: number
+  deadline?: number
   status?: string
   exitCode?: number
   viewed?: boolean

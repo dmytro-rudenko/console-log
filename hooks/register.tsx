@@ -5,7 +5,7 @@ import type { Board, ConsoleTask } from '../types'
 import { age, bottomParts, fit, mark, paneHint, statusText, tabLabel, tabWidth, tabWindow, topParts } from './layout'
 import { parseTaskNotification } from './notification'
 import { sanitize } from './sanitize'
-import { addTask, applyNotification, dropTask, hasRunning, selectTask } from './tasks'
+import { addTask, applyNotification, dropTask, expireTasks, hasRunning, selectTask } from './tasks'
 
 const PANE = 'console-log'
 const TITLE = 'Background output'
@@ -16,6 +16,9 @@ const POLL_MS = 1000
 const TAIL_TIMEOUT_MS = 2000
 const DROP_COMPLETED_MS = 10000
 const FIND_TIMEOUT_MS = 1000
+const MONITOR_DEFAULT_MS = 300000
+const MONITOR_MAX_MS = 1800000
+const EXPIRE_GRACE_MS = 5000
 
 const tasks = atom({ plugin: 'console-log', key: 'tasks' } as const, [] as ConsoleTask[])
 const selected = atom({ plugin: 'console-log', key: 'selected' } as const, -1)
@@ -28,6 +31,7 @@ const hasCtrlArrows = atom({ plugin: 'console-log', key: 'hasCtrlArrows' } as co
 let timer: Timer | undefined
 let busy = false
 let pending = false
+let chain: Promise<unknown> = Promise.resolve()
 
 async function board($: EngineInterface): Promise<Board> {
   return { tasks: await read($, tasks), selected: await read($, selected) }
@@ -36,6 +40,17 @@ async function board($: EngineInterface): Promise<Board> {
 async function save($: EngineInterface, b: Board) {
   await update($, tasks, () => b.tasks)
   await update($, selected, () => b.selected)
+}
+
+function mutate($: EngineInterface, fn: (b: Board) => Board): Promise<Board> {
+  const run = chain.then(async () => {
+    const before = await board($)
+    const after = fn(before)
+    if (after !== before) await save($, after)
+    return after
+  })
+  chain = run.catch(() => undefined)
+  return run
 }
 
 async function load($: EngineInterface) {
@@ -63,6 +78,7 @@ async function load($: EngineInterface) {
 }
 
 async function refresh($: EngineInterface) {
+  if (await read($, dismissed)) return
   if (busy) {
     pending = true
     return
@@ -80,7 +96,9 @@ async function refresh($: EngineInterface) {
 }
 
 async function poll($: EngineInterface) {
-  if (!hasRunning(await board($))) {
+  const now = await $.clock.now()
+  const b = await mutate($, x => expireTasks(x, now, EXPIRE_GRACE_MS))
+  if (!hasRunning(b)) {
     await refresh($)
     timer?.cancel()
     timer = undefined
@@ -105,15 +123,22 @@ async function leave($: EngineInterface) {
   await $.ui.open({ id: PANE, title: TITLE, columns: COLUMNS })
 }
 
-async function drop($: EngineInterface, id: string) {
-  const b = dropTask(await board($), id)
-  await save($, b)
+async function drop($: EngineInterface, id: string): Promise<Board> {
+  const b = await mutate($, x => dropTask(x, id))
   if (b.tasks.length === 0) {
     await update($, lines, () => [])
     await $.ui.close({ id: PANE })
-    return
+    return b
   }
   await refresh($)
+  return b
+}
+
+async function exit($: EngineInterface) {
+  const b = await board($)
+  const task = b.tasks[b.selected]
+  if (task?.viewed && (await drop($, task.id)).tasks.length === 0) return
+  await leave($)
 }
 
 function clean(raw: string): string {
@@ -135,13 +160,21 @@ async function findOutput($: EngineInterface, id: string): Promise<string | unde
   return wide.stdout.trim() || undefined
 }
 
-async function track($: EngineInterface, seed: Omit<ConsoleTask, 'path' | 'startedAt'>, known: string | undefined) {
-  const path = known ?? (await findOutput($, seed.id))
-  const task: ConsoleTask = { ...seed, path, startedAt: await $.clock.now() }
-  await save($, addTask(await board($), task))
+async function track($: EngineInterface, seed: Omit<ConsoleTask, 'path' | 'startedAt' | 'deadline'>, timeoutMs: number | undefined) {
+  tick($)
+  const startedAt = await $.clock.now()
+  const deadline = timeoutMs === undefined ? undefined : startedAt + timeoutMs
+  await mutate($, b => addTask(b, { ...seed, startedAt, deadline }))
+  const path = await findOutput($, seed.id).catch(() => undefined)
+  if (path) await mutate($, b => ({ ...b, tasks: b.tasks.map(x => (x.id === seed.id ? { ...x, path } : x)) }))
   await refresh($)
   await openPane($)
-  tick($)
+}
+
+function monitorTimeout(result: number | undefined, input: number | undefined, persistent: boolean | undefined): number | undefined {
+  if (persistent || result === 0) return undefined
+  if (result !== undefined && result > 0) return result
+  return Math.min(input && input > 0 ? input : MONITOR_DEFAULT_MS, MONITOR_MAX_MS)
 }
 
 async function readCtrlArrows($: EngineInterface): Promise<boolean> {
@@ -160,10 +193,7 @@ async function readCtrlArrows($: EngineInterface): Promise<boolean> {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'console-log', description: 'Open the background output pane' })
-    $.ui.status(undefined)
-    let b = await board($)
-    for (const x of b.tasks) if (x.status === 'completed') b = dropTask(b, x.id)
-    await save($, b)
+    const b = await mutate($, x => x.tasks.reduce((acc, t) => (t.status === 'completed' ? dropTask(acc, t.id) : acc), x))
     const bound = await readCtrlArrows($)
     await update($, hasCtrlArrows, () => bound)
     if (hasRunning(b)) tick($)
@@ -177,9 +207,10 @@ export const register: Register = on => {
     if (e.agentId !== undefined) return ran
     const r = ran.result as {
       backgroundTaskId?: string
-      backgroundOutputPath?: string
       backgroundEndsWithFinalResponse?: true
       taskId?: string
+      timeoutMs?: number
+      persistent?: boolean
     }
     if (r.backgroundEndsWithFinalResponse) return ran
     const id = e.tool === 'Bash' ? r.backgroundTaskId : r.taskId
@@ -192,16 +223,16 @@ export const register: Register = on => {
       command,
       label: e.tool === 'Monitor' ? command : described ? clean(described) : undefined,
     } as const
-    void track($, seed, r.backgroundOutputPath).catch(() => undefined)
+    const timeout = e.tool === 'Monitor' ? monitorTimeout(r.timeoutMs, e.timeout_ms, r.persistent) : undefined
+    void track($, seed, timeout).catch(() => undefined)
     return ran
   }).catch(($, e, next) => next(e))
 
   on('prompt.submit', async ($, e, next) => {
     if (e.origin.kind === 'task-notification') {
       const n = parseTaskNotification(e.text)
-      const b = await board($)
-      if (n && b.tasks.some(x => x.id === n.id)) {
-        await save($, applyNotification(b, n))
+      const b = n ? await mutate($, x => applyNotification(x, n)) : undefined
+      if (n && b?.tasks.some(x => x.id === n.id)) {
         await refresh($)
         if (n.status === 'completed') $.clock.after(DROP_COMPLETED_MS, () => void drop($, n.id).catch(() => undefined))
       }
@@ -215,14 +246,17 @@ export const register: Register = on => {
       if (e.origin.kind !== 'person') return next(e)
       // ui.focus carries no direction; with one task both ctrl+arrows land on exit, so leaving is the only way out
       if (b.tasks.length > 1 && b.selected === b.tasks.length - 1) return {}
-      void leave($).catch(() => undefined)
+      void exit($).catch(() => undefined)
       return {}
     }
     const id = e.element?.startsWith('tab-') ? e.element.slice(4) : undefined
     const i = id ? b.tasks.findIndex(x => x.id === id) : -1
     if (i >= 0 && i !== b.selected) {
-      await save($, selectTask(b, i))
-      await refresh($)
+      await mutate($, x => {
+        const j = x.tasks.findIndex(t => t.id === id)
+        return j >= 0 ? selectTask(x, j) : x
+      })
+      void refresh($).catch(() => undefined)
     }
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -237,6 +271,7 @@ export const register: Register = on => {
   on('command.run', { command: 'console-log' }, async $ => {
     await update($, dismissed, () => false)
     await $.ui.open({ id: PANE, title: TITLE, columns: COLUMNS })
+    void refresh($).catch(() => undefined)
     return { text: 'Background output pane opened.' }
   }).catch(() => ({ text: 'console-log: could not open the pane.' }))
 
