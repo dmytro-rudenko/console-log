@@ -1,0 +1,13 @@
+{
+  "name": "console-log",
+  "description": "Live pane with the output of Claude Code background tasks",
+  "owner": {
+    "name": "dmytro-rudenko"
+  },
+  "plugins": [
+    {
+      "name": "console-log",
+      "source": "./"
+    }
+  ]
+}
