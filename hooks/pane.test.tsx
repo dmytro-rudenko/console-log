@@ -149,3 +149,37 @@ test('two tasks failing together both keep their status', async ($, on) => {
   expect((await ui.findAll({ type: 'Text', text: /^✗/ })).length).toBe(2)
   await ui.unmount()
 })
+
+test('a shell the person backgrounds from bash mode becomes a tab', async ($, on) => {
+  mock.env(on, { HOME: '/home/nobody' })
+  mock.clock(on)
+  on('command.register', () => ({ value: { command: 'console-log' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('fs.read', () => { throw new Error('no file') })
+  const runs: (readonly string[])[] = []
+  on('process.run', (_, e) => {
+    runs.push(e.argv)
+    return { value: { exitCode: 0, stdout: 'freed 9G\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const path = '/tmp/claude-1000/p/S1/tasks/by06tu3fc.output'
+  const row = { door: 'prompt', origin: { kind: 'composer' }, uuid: 'u1' } as const
+  await $.session.append({ ...row, message: { type: 'user', content: [{ type: 'text', text: "<bash-input>ssh root@host 'bash -s' < cleanup.sh</bash-input>" }] } })
+  await $.session.append({
+    ...row,
+    uuid: 'u2',
+    message: {
+      type: 'user',
+      content: [{ type: 'text', text: `<bash-stdout>Command was manually backgrounded by user with ID: by06tu3fc. Output is being written to: ${path}.</bash-stdout><bash-stderr></bash-stderr>` }],
+    },
+  })
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /1 task/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /freed 9G/ })).toBeDefined()
+  expect(runs.some(a => a[0] === 'tail' && a.at(-1) === path)).toBe(true)
+  expect(runs.some(a => a[0] === 'sh')).toBe(false)
+  await ui.unmount()
+})

@@ -50,6 +50,7 @@ Trade-off: once you add the snippet, `ctrl+→` in the prompt no longer jumps to
 
 ## Behaviour
 
+- A command you run with `!` and then send to the background also gets a tab.
 - `◐` marks a running task.
 - `✓` marks a completed task. It disappears after 10 seconds.
 - `✗` (failed) and `■` (other end states) stay until you have moved onto the tab and then away from it, to another tab or back to the prompt.
