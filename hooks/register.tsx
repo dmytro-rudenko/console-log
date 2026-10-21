@@ -134,6 +134,14 @@ async function drop($: EngineInterface, id: string): Promise<Board> {
   return b
 }
 
+// TaskStop ends a task without a <task-notification>, so this is the only signal that it is gone
+async function stop($: EngineInterface, id: string) {
+  const b = await mutate($, x => applyNotification(x, { id, status: 'killed' }))
+  if (!b.tasks.some(x => x.id === id)) return
+  await refresh($)
+  $.clock.after(DROP_COMPLETED_MS, () => void drop($, id).catch(() => undefined))
+}
+
 async function exit($: EngineInterface) {
   const b = await board($)
   const task = b.tasks[b.selected]
@@ -202,8 +210,13 @@ export const register: Register = on => {
 
   on('tool.call', async ($, e, next) => {
     const ran = await next(e)
-    if (e.tool !== 'Bash' && e.tool !== 'Monitor') return ran
     if (ran.deny !== undefined || ran.isError) return ran
+    if (e.tool === 'TaskStop') {
+      const id = (ran.result as { task_id?: string }).task_id
+      if (id) void stop($, id).catch(() => undefined)
+      return ran
+    }
+    if (e.tool !== 'Bash' && e.tool !== 'Monitor') return ran
     if (e.agentId !== undefined) return ran
     const r = ran.result as {
       backgroundTaskId?: string
