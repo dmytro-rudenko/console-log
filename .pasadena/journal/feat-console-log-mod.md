@@ -46,3 +46,9 @@ started: 2026-10-20
 - 18:34 ● 3b80099 feat(console-log): pane with live output of background tasks
 - 18:34 ● b9be730 chore(plugin): describe the marketplace
 - 18:34 ✎ Хвиля 3: register.tsx — tool.call повертає результат одразу, трекінг у фоні; фінальний refresh не губиться (pending); задачі субагентів поза обсягом
+- 18:35 ● 026fee3 chore(plan): close wave 3
+- 18:38 ● 8d213be fix(notification): accept only plain-token task ids and statuses
+- 20:13 ⏸ pause · exit · HEAD=8d213be
+
+### 2026-10-21
+- 11:19 ✎ Хвиля 4: smoke у живій сесії пройдено — вкладки Bash і Monitor, ctrl+→/ctrl+←, ✓ зникає, ✗ до перегляду, закриття без задач

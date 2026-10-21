@@ -901,11 +901,11 @@ export const register: Register = on => {
 **Depends on:** Tasks 6, 7
 **Interfaces:** —
 
-- [ ] **Step 1:** видалити прототип із теки модів сесії, щоб `/console-log` не реєструвався двічі: `rm -rf /home/pc/.claude/dev-mods/<поточна session id>/bg-tail` (прототип збережено в `docs/sdd/proto/…/v2-final`).
-- [ ] **Step 2:** скопіювати плагін у теку модів сесії: `rsync -a --exclude .git --exclude docs --exclude .pasadena ./ /home/pc/.claude/dev-mods/<session id>/console-log/`; дочекатися reload (рядок `console-log: This mod … loaded`).
-- [ ] **Step 3:** запустити три фонові Bash (8 с успіх, 25 с `exit 1`, 2 хв довгий) і Monitor на 15 с — панель відкривається, 4 вкладки, лог оновлюється щосекунди, Monitor підписано `monitor: …`.
-- [ ] **Step 4:** людина перевіряє `ctrl+→` (перша задача), `ctrl+→` до останньої (стоїть), `ctrl+←` назад і на першій — вихід у промпт; ✓ зникає за 10 с; ✗ зникає після перегляду; без задач панель закривається; закрита `✕` не відкривається до `/console-log`.
-- [ ] **Step 5:** знахідки — окремими fix-комітами в Task 6/7 файлах; після проходу видалити тимчасову копію з dev-mods.
+- [x] **Step 1:** видалити прототип із теки модів сесії, щоб `/console-log` не реєструвався двічі: `rm -rf /home/pc/.claude/dev-mods/<поточна session id>/bg-tail` (прототип збережено в `docs/sdd/proto/…/v2-final`).
+- [x] **Step 2:** скопіювати плагін у теку модів сесії: `rsync -a --exclude .git --exclude docs --exclude .pasadena ./ /home/pc/.claude/dev-mods/<session id>/console-log/`; дочекатися reload (рядок `console-log: This mod … loaded`).
+- [x] **Step 3:** запустити три фонові Bash (8 с успіх, 25 с `exit 1`, 2 хв довгий) і Monitor на 15 с — панель відкривається, 4 вкладки, лог оновлюється щосекунди, Monitor підписано `monitor: …`.
+- [x] **Step 4:** людина перевіряє `ctrl+→` (перша задача), `ctrl+→` до останньої (стоїть), `ctrl+←` назад і на першій — вихід у промпт; ✓ зникає за 10 с; ✗ зникає після перегляду; без задач панель закривається; закрита `✕` не відкривається до `/console-log`.
+- [x] **Step 5:** знахідки — окремими fix-комітами в Task 6/7 файлах; після проходу видалити тимчасову копію з dev-mods.
 
 ## Verification (end-to-end)
 
