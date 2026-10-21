@@ -183,3 +183,37 @@ test('a shell the person backgrounds from bash mode becomes a tab', async ($, on
   expect(runs.some(a => a[0] === 'sh')).toBe(false)
   await ui.unmount()
 })
+
+test('a task stopped with TaskStop leaves the pane and the pane closes', async ($, on) => {
+  mock.env(on, { HOME: '/home/nobody' })
+  const clock = mock.clock(on)
+  const closed: string[] = []
+  on('command.register', () => ({ value: { command: 'console-log' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.close', (_, e) => {
+    closed.push(e.id)
+    return { value: undefined }
+  })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 'S1' }))
+  on('fs.read', () => { throw new Error('no file') })
+  on('process.run', (_, e) => (e.argv[0] === 'tail' ? ok('x\n') : ok('/tmp/s1.output\n')))
+  on('tool.call', (_, e) =>
+    e.tool === 'TaskStop'
+      ? { result: { message: 'stopped', task_id: 's1', task_type: 'local_bash' } }
+      : { result: { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 's1' } },
+  )
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'sleep infinity', description: 'dev server', run_in_background: true })
+  await clock.settle()
+  await $.tool.call({ tool: 'TaskStop', task_id: 's1' })
+  await clock.settle()
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /■/ })).toBeDefined()
+  await ui.unmount()
+
+  await clock.advance(11000)
+  expect(closed).toContain('console-log')
+})
