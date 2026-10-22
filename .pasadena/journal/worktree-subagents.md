@@ -11,10 +11,9 @@ started: 2026-10-22
 Готово, коли субагенти з'являються як вкладки, їхній транскрипт видно в панелі, а перемикання працює тими самими клавішами.
 
 ## Now
-Shaping, architectural. Дизайн погоджено (3 секції): підхід A — хук `agent.spawn` + опитування `$.agent.list()`, текст вибраного агента з `$.session.messages({ agentId })` → `agentLines()` у `hooks/transcript.ts`; `kind: 'agent'` у тому ж Board; усі субагенти; ✓ зникає за 10 с; текст + тули + 3 рядки результату; `syncAgents()` у tasks.ts; версія 0.2.0.
-Прототип підписано: варіант A (`docs/sdd/proto/subagent-tab/decision.md`).
-Spec і план схвалено, draft PR #4. Building (wolowitz): хвилі 0 → 1 → {2,3,5} → 4.
-Далі: Wave 0 — acceptance-тести в `hooks/pane.test.tsx`, `claude plugin test .` → `38 pass, 4 fail`.
+Building (wolowitz), PR #4. Хвиля 0 закрита (`3d18eda`): 4 acceptance-тести червоні навмисно, 38 pass, tsc 0.
+Далі: хвиля 1 — задача 1, `types/index.d.ts` (kind 'agent' + OutLine); перевірка `npx -y -p typescript tsc -p . --noEmit` і `claude plugin test .` → 38 pass / 4 fail.
+Типи рушія для tsc скопійовано в `.claude-plugin/types` (gitignored).
 Не чіпати: фільтр `e.agentId !== undefined` для Bash/Monitor у tool.call.
 
 ## Timeline
@@ -27,3 +26,7 @@ Spec і план схвалено, draft PR #4. Building (wolowitz): хвилі 
 - 13:49 ● 5191347 docs(proto): subagent transcript tab prototype, variant A chosen
 - 13:50 ✎ Spec написано: OutLine з tone замість кольору з префікса; syncAgents, agentLines, версія 0.2.0
 - 13:50 ● 95ca492 docs(spec): subagent transcripts in the console-log pane
+- 14:00 ● cd254be docs(plan): subagent transcripts implementation plan
+- 14:00 ✎ План схвалено: 6 задач, 4 хвилі; agent.spawn без .catch, щоб не спавнити двічі
+- 14:07 ● 3d18eda test(console-log): acceptance tests for subagent transcript tabs
+- 14:08 ✎ Хвиля 0: acceptance-тести червоні з правильної причини; мок session.messages прив'язано до agentId

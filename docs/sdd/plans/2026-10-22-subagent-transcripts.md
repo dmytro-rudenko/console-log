@@ -37,7 +37,7 @@ Serialized: Task 4 must follow 2 and 3 (consumes both). Task 1 and Task 4 both w
 **Writes:** `hooks/pane.test.tsx` (append only; existing tests untouched)
 **Covers:** spec §6 "`hooks/pane.test.tsx` — `agent.spawn` → вкладка й `TRANSCRIPT`; змоканий `session.messages` → у тілі видно `→ Read: …`; `agent.list` з `completed` + 10 с → вкладка зникає, панель закривається; `{ deny }` → `transcript unavailable`", plus spec §3.3 "агента немає в `infos` → `killed`".
 
-- [ ] **Step 1: write the acceptance tests** — append to the end of `hooks/pane.test.tsx` (it already defines `PANE`, `ok`, `note` and imports `expect, mock, test`):
+- [x] **Step 1: write the acceptance tests** — append to the end of `hooks/pane.test.tsx` (it already defines `PANE`, `ok`, `note` and imports `expect, mock, test`):
 
 ```tsx
 const agentSetup = (on: On, list: () => { id: string; status: string }[], messages: () => unknown) => {
@@ -129,7 +129,7 @@ test('an unreadable transcript says so', async ($, on) => {
 
 Add `import type { On } from 'claude-code'` at the top of the file. If the test's `on` is not assignable to `On`, type the parameter as `Parameters<Parameters<typeof test>[1]>[1]` instead.
 
-- [ ] **Step 2: run them, watch them fail** — `claude plugin test .`, expect the four new tests `(fail)` (no tab: `TRANSCRIPT`/`✓`/`■`/`transcript unavailable` not found) and the 38 existing tests `(pass)`: `38 pass`, `4 fail`.
+- [x] **Step 2: run them, watch them fail** — `claude plugin test .`, expect the four new tests `(fail)` (no tab: `TRANSCRIPT`/`✓`/`■`/`transcript unavailable` not found) and the 38 existing tests `(pass)`: `38 pass`, `4 fail`.
 
 ### Task 1: agent kind and the OutLine type
 
