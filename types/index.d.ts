@@ -1,6 +1,6 @@
 export type ConsoleTask = {
   id: string
-  kind: 'shell' | 'monitor'
+  kind: 'shell' | 'monitor' | 'agent'
   command: string
   label?: string
   path?: string
@@ -15,12 +15,14 @@ export type Board = { tasks: ConsoleTask[]; selected: number }
 
 export type TaskNotification = { id: string; status: string; exitCode?: number }
 
+export type OutLine = { text: string; tone: 'text' | 'tool' | 'result' | 'error' | 'muted' }
+
 declare module 'claude-code' {
   interface PluginState {
     'console-log': {
       tasks: ConsoleTask[]
       selected: number
-      lines: string[]
+      lines: Shaped<OutLine[]>
       pathMissing: boolean
       readFailed: boolean
       dismissed: boolean

@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Board, ConsoleTask } from '../types'
-import { addTask, applyNotification, dropTask, expireTasks, hasRunning, MAX_TASKS, selectTask } from './tasks'
+import { addTask, applyNotification, dropTask, expireTasks, hasRunning, MAX_TASKS, selectTask, syncAgents } from './tasks'
 
 const t = (id: string, extra: Partial<ConsoleTask> = {}): ConsoleTask => ({ id, kind: 'shell', command: id, startedAt: 0, ...extra })
 const empty: Board = { tasks: [], selected: -1 }
@@ -67,4 +67,30 @@ test('dropTask keeps the selection by id and closes to -1 when empty', async () 
 test('hasRunning is true while any task has no status', async () => {
   expect(hasRunning({ tasks: [t('a', { status: 'completed' }), t('b')], selected: 0 })).toBe(true)
   expect(hasRunning({ tasks: [t('a', { status: 'failed' })], selected: 0 })).toBe(false)
+})
+
+const ag = (id: string, extra: Partial<ConsoleTask> = {}): ConsoleTask => t(id, { kind: 'agent', ...extra })
+
+test('syncAgents gives an agent its final status from the list', async () => {
+  const b: Board = { tasks: [ag('a'), ag('b'), ag('c')], selected: 0 }
+  const after = syncAgents(b, [{ id: 'a', status: 'completed' }, { id: 'b', status: 'failed' }, { id: 'c', status: 'killed' }])
+  expect(after.tasks.map(x => [x.status, x.viewed])).toEqual([['completed', false], ['failed', false], ['killed', false]])
+  expect(after.selected).toBe(0)
+})
+
+test('syncAgents marks an agent the list no longer has as killed', async () => {
+  const after = syncAgents({ tasks: [ag('a')], selected: 0 }, [])
+  expect(after.tasks[0]).toEqual({ ...ag('a'), status: 'killed', viewed: false })
+})
+
+test('syncAgents leaves pending, running, waiting and idle agents, shells and finished agents alone', async () => {
+  const b: Board = { tasks: [ag('a'), ag('b'), ag('c'), ag('p'), t('s'), ag('d', { status: 'failed', viewed: true })], selected: 0 }
+  const infos = [
+    { id: 'a', status: 'running' },
+    { id: 'b', status: 'waiting' },
+    { id: 'c', status: 'idle' },
+    { id: 'p', status: 'pending' },
+    { id: 'd', status: 'completed' },
+  ]
+  expect(syncAgents(b, infos)).toBe(b)
 })

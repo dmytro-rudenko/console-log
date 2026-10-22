@@ -1,6 +1,6 @@
 # console-log
 
-A Claude Code mod that adds a pane beside the chat. For each background Bash or Monitor task, such as `pnpm test` or `vite`, the pane shows the latest lines that fit, from the last 200 of its output, and refreshes every second. It does not scroll.
+A Claude Code mod that adds a pane beside the chat. For each background Bash or Monitor task, such as `pnpm test` or `vite`, the pane shows the latest lines that fit, from the last 200 of its output, and refreshes every second. Each subagent gets a tab too, with its transcript. It does not scroll.
 
 ## Requirements
 
@@ -51,6 +51,8 @@ Trade-off: once you add the snippet, `ctrl+→` in the prompt no longer jumps to
 ## Behaviour
 
 - A command you run with `!` and then send to the background also gets a tab.
+- Every subagent (foreground, background or nested) gets a tab labelled `Type·description`. Its body, framed `TRANSCRIPT`, shows the first line of its prompt (`▸`), its text, each tool call as `→ Tool: argument`, and up to three lines of each tool result (`… +N lines` for the rest, `✗` on an error, `…` while the tool runs).
+- A subagent's tab follows the marks below. A subagent the session no longer lists shows `■`.
 - `◐` marks a running task.
 - `✓` marks a completed task. It disappears after 10 seconds.
 - `✗` (failed) and `■` (other end states) stay until you have moved onto the tab and then away from it, to another tab or back to the prompt.
@@ -64,6 +66,8 @@ Trade-off: once you add the snippet, `ctrl+→` in the prompt no longer jumps to
 - Only background tasks started after the mod loaded are shown.
 - ANSI colours are stripped from the output.
 - The pane frame (the grey lines and the `✕`) is drawn by Claude Code, not by the mod.
+- A tool result in a subagent's tab shows at most three lines.
+- Workflow agents and teammates get no tab.
 
 ## Development
 
@@ -71,7 +75,7 @@ In a fresh clone, `tsconfig.json` extends types that Claude Code writes into `.c
 
 ## Українською
 
-Мод для Claude Code, який додає панель поруч із чатом. Для кожної фонової задачі Bash або Monitor, наприклад `pnpm test` чи `vite`, панель показує найновіші рядки, що вміщаються, з останніх 200 рядків виводу, і оновлюється щосекунди. Прокрутки немає.
+Мод для Claude Code, який додає панель поруч із чатом. Для кожної фонової задачі Bash або Monitor, наприклад `pnpm test` чи `vite`, панель показує найновіші рядки, що вміщаються, з останніх 200 рядків виводу, і оновлюється щосекунди. Кожен субагент теж отримує вкладку зі своїм транскриптом. Прокрутки немає.
 
 ### Вимоги
 
@@ -121,6 +125,8 @@ claude plugin install console-log --marketplace dmytro-rudenko/console-log
 
 ### Поведінка
 
+- Кожен субагент (звичайний, фоновий чи вкладений) отримує вкладку з підписом `Тип·опис`. Її тіло в рамці `TRANSCRIPT` показує перший рядок промпту (`▸`), текст агента, кожен виклик тулу як `→ Tool: аргумент` і до трьох рядків результату (`… +N lines` для решти, `✗` на помилці, `…` поки тул працює).
+- Вкладка субагента підкоряється тим самим позначкам, що нижче. Субагент, якого сесія вже не показує в списку, отримує `■`.
 - `◐` позначає задачу, що виконується.
 - `✓` позначає завершену задачу. Вона зникає через 10 секунд.
 - `✗` (помилка) і `■` (інші кінцеві стани) лишаються, доки ви не перейдете на цю вкладку, а потім з неї: на іншу вкладку або назад у промпт.
@@ -134,6 +140,8 @@ claude plugin install console-log --marketplace dmytro-rudenko/console-log
 - Показуються лише фонові задачі, запущені після завантаження мода.
 - ANSI-кольори з виводу вирізаються.
 - Рамку панелі (сірі рядки та `✕`) малює Claude Code, а не мод.
+- Результат тулу у вкладці субагента показує щонайбільше три рядки.
+- Агенти воркфлоу й teammates вкладки не отримують.
 
 ### Розробка
 
