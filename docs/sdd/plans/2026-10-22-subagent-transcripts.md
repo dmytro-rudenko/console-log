@@ -359,8 +359,8 @@ export function syncAgents(board: Board, infos: readonly { id: string; status: s
 **Interfaces:**
 - Consumes: `agentLines` (Task 2), `syncAgents` (Task 3), `OutLine` (Task 1).
 
-- [ ] **Step 1: state type** — `types/index.d.ts`: in `PluginState['console-log']` change `lines: string[]` to `lines: OutLine[]`. In `hooks/register.tsx`: `import type { Board, ConsoleTask, OutLine } from '../types'`; `const lines = atom({ plugin: 'console-log', key: 'lines' } as const, [] as OutLine[])`; import `syncAgents` from `./tasks` and `agentLines` from `./transcript`.
-- [ ] **Step 2: load()** — at the start of `load`, after `const task = …`, add the agent branch; in the shell branch map lines to `OutLine`:
+- [x] **Step 1: state type** — `types/index.d.ts`: in `PluginState['console-log']` change `lines: string[]` to `lines: OutLine[]`. In `hooks/register.tsx`: `import type { Board, ConsoleTask, OutLine } from '../types'`; `const lines = atom({ plugin: 'console-log', key: 'lines' } as const, [] as OutLine[])`; import `syncAgents` from `./tasks` and `agentLines` from `./transcript`.
+- [x] **Step 2: load()** — at the start of `load`, after `const task = …`, add the agent branch; in the shell branch map lines to `OutLine`:
 
 ```ts
   if (task?.kind === 'agent') {
@@ -382,7 +382,7 @@ export function syncAgents(board: Board, infos: readonly { id: string; status: s
 ```
 
 and replace `next.map(l => sanitize(l).slice(0, LINE_MAX))` with `next.map((l): OutLine => ({ text: sanitize(l).slice(0, LINE_MAX), tone: 'text' }))`.
-- [ ] **Step 3: status sync in poll()** — add above `poll`:
+- [x] **Step 3: status sync in poll()** — add above `poll`:
 
 ```ts
 async function syncAgentStatus($: EngineInterface) {
@@ -404,8 +404,8 @@ async function syncAgentStatus($: EngineInterface) {
 ```
 
 and make `poll` call `await syncAgentStatus($)` as its first line (before `const now = …`).
-- [ ] **Step 4: track() skips the output lookup for agents** — change `const path = known ?? (await findOutput($, seed.id).catch(() => undefined))` to `const path = seed.kind === 'agent' ? undefined : (known ?? (await findOutput($, seed.id).catch(() => undefined)))`.
-- [ ] **Step 5: agent.spawn hook** — add above `export const register`:
+- [x] **Step 4: track() skips the output lookup for agents** — change `const path = known ?? (await findOutput($, seed.id).catch(() => undefined))` to `const path = seed.kind === 'agent' ? undefined : (known ?? (await findOutput($, seed.id).catch(() => undefined)))`.
+- [x] **Step 5: agent.spawn hook** — add above `export const register`:
 
 ```ts
 async function spawned($: EngineInterface, e: { subagentType: string; description: string }, id: string) {
@@ -426,7 +426,7 @@ and inside `register`, after the `tool.call` hook:
 ```
 
 No `.catch` on this hook (a fallback `next(e)` would spawn twice if `next` threw).
-- [ ] **Step 6: render** — in the `ui.render` hook:
+- [x] **Step 6: render** — in the `ui.render` hook:
   - add a module-level map:
     ```ts
     const TONE: Record<OutLine['tone'], { color?: string; dim?: boolean }> = {
@@ -449,7 +449,7 @@ No `.catch` on this hook (a fallback `next(e)` would spawn twice if `next` threw
     ```
   - `const out: OutLine[] = missing ? [{ text: 'output file not found', tone: 'muted' }] : body.slice(-room)`; pad with `out.push({ text: '', tone: 'text' })`; render `out.map((l, i) => row(l, \`o${i}\`))`.
   - `const isAgent = task?.kind === 'agent'`; right side: `` `${statusText(task)}${failed ? (isAgent ? ' · transcript unavailable' : ' · file unavailable') : ''}` ``; body title: `top(isAgent ? 'TRANSCRIPT' : 'OUTPUT', right)`.
-- [ ] **Step 7: run, watch it pass** — `claude plugin test .` → `0 fail`, last line `Ran N tests across 7 files.`; `npx -y -p typescript tsc -p . --noEmit` → exit 0; `claude plugin validate .` → `✔ Validation passed`.
+- [x] **Step 7: run, watch it pass** — `claude plugin test .` → `0 fail`, last line `Ran N tests across 7 files.`; `npx -y -p typescript tsc -p . --noEmit` → exit 0; `claude plugin validate .` → `✔ Validation passed`.
 
 ### Task 5: version and README
 

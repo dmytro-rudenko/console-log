@@ -11,8 +11,8 @@ started: 2026-10-22
 Готово, коли субагенти з'являються як вкладки, їхній транскрипт видно в панелі, а перемикання працює тими самими клавішами.
 
 ## Now
-Building (wolowitz), PR #4. Хвилі 0–2 закриті (`3d18eda`, `0a53f2e`, `606f983`, `6b542ec`, `2e29350`): 50 pass, 4 acceptance-тести червоні навмисно, tsc 0.
-Далі: хвиля 3 — задача 4, `hooks/register.tsx` + `types/index.d.ts` (lines: OutLine[]); має зробити всі 4 acceptance-тести зеленими: `claude plugin test .` → 0 fail. Потім Finish: whole-branch review, security-review, журнал, gh pr ready.
+Building (wolowitz), PR #4. Усі хвилі закриті, останній коміт задачі — `076840c`: 55 pass, 0 fail, tsc 0, validate ok.
+Далі: Finish — whole-branch review (`git diff $(git merge-base main HEAD)..HEAD`), security-review, живий смоук, прибрати dev-мод subagent-proto, журнал finish, gh pr ready.
 Типи рушія для tsc скопійовано в `.claude-plugin/types` (gitignored).
 Не чіпати: фільтр `e.agentId !== undefined` для Bash/Monitor у tool.call.
 
@@ -38,3 +38,6 @@ Building (wolowitz), PR #4. Хвилі 0–2 закриті (`3d18eda`, `0a53f2e
 - 14:13 ● 6b542ec feat(console-log): sync agent tab status from the agent list
 - 14:13 ● 2e29350 chore(release): 0.2.0 with subagent transcripts documented
 - 14:14 ✎ Хвиля 2: agentLines/syncAgents/0.2.0; аргумент тулу — лише перший рядок; агент поза списком = killed (рішення spec)
+- 14:14 ● f51a4c6 chore(plan): close wave 2
+- 14:23 ● 076840c feat(console-log): subagent tabs with live transcripts in the pane
+- 14:23 ✎ Хвиля 3: панель підключена; воркфлоу-агенти й teammates без вкладки; tick після addTask, щоб таймер не зупинився
