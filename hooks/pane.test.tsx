@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
+import type { AgentSpawnInput, AgentStatus, On, SessionMessage } from 'claude-code'
 
 const PANE = {
   plugin: 'console-log',
@@ -216,4 +217,106 @@ test('a task stopped with TaskStop leaves the pane and the pane closes', async (
 
   await clock.advance(11000)
   expect(closed).toContain('console-log')
+})
+
+const agentSetup = (on: On, list: () => { id: string; status: AgentStatus }[], messages: () => SessionMessage[] | { deny: string }) => {
+  mock.env(on, { HOME: '/home/nobody' })
+  on('command.register', () => ({ value: { command: 'console-log' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('fs.read', () => { throw new Error('no file') })
+  on('session.id', () => ({ value: 'S1' }))
+  const runs: (readonly string[])[] = []
+  on('process.run', (_, e) => {
+    runs.push(e.argv)
+    return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('agent.spawn', () => ({ model: 'claude-haiku-5-5', agentId: 'ag1' }))
+  on('agent.list', () => ({ value: list().map(a => ({ ...a, description: 'explore auth', type: 'Explore' })) }))
+  on('session.messages', (_, e) => ({ value: e.agentId === 'ag1' ? messages() : [] }))
+  return runs
+}
+
+const SPAWN: Omit<AgentSpawnInput, 'prompt' | 'description' | 'subagentType'> = {
+  tool_use_id: 'tu1',
+  provider: { plugin: 'engine', tier: 'core' },
+  parentModel: 'claude-opus-5-5',
+  background: true,
+  fork: false,
+}
+
+const TRANSCRIPT_FIXTURE: SessionMessage[] = [
+  { role: 'user', text: 'Find the refresh token\nDo not edit files', toolUses: [] },
+  {
+    role: 'assistant',
+    text: 'Looking for the token.',
+    toolUses: [{ tool_use_id: 't1', tool: 'Read', input: { file_path: 'src/auth/session.ts' }, text: 'a\nb\nc\nd\ne' }],
+  },
+]
+
+test('a subagent becomes a tab with its transcript', async ($, on) => {
+  const clock = mock.clock(on)
+  const runs = agentSetup(on, () => [{ id: 'ag1', status: 'running' }], () => TRANSCRIPT_FIXTURE)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.agent.spawn({ ...SPAWN, prompt: 'Find the refresh token', description: 'explore auth', subagentType: 'Explore' })
+  await clock.settle()
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /TRANSCRIPT/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Explore·explore auth/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /▸ Find the refresh token/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /→ Read: src\/auth\/session\.ts/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /… \+2 lines/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Explore: explore auth/ })).toBeDefined()
+  await ui.unmount()
+  expect(runs.some(a => a[0] === 'sh')).toBe(false)
+})
+
+test('a completed subagent leaves after 10 seconds and the pane closes', async ($, on) => {
+  const clock = mock.clock(on)
+  let status: AgentStatus = 'running'
+  const closed: string[] = []
+  agentSetup(on, () => [{ id: 'ag1', status }], () => TRANSCRIPT_FIXTURE)
+  on('ui.close', (_, e) => {
+    closed.push(e.id)
+    return { value: undefined }
+  })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.agent.spawn({ ...SPAWN, prompt: 'p', description: 'explore auth', subagentType: 'Explore' })
+  await clock.settle()
+  status = 'completed'
+  await clock.advance(1500)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /✓/ })).toBeDefined()
+  await ui.unmount()
+
+  await clock.advance(11000)
+  expect(closed).toContain('console-log')
+})
+
+test('a subagent the session no longer lists shows as killed', async ($, on) => {
+  const clock = mock.clock(on)
+  agentSetup(on, () => [], () => TRANSCRIPT_FIXTURE)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.agent.spawn({ ...SPAWN, prompt: 'p', description: 'explore auth', subagentType: 'Explore' })
+  await clock.settle()
+  await clock.advance(1500)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /■/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /killed/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('an unreadable transcript says so', async ($, on) => {
+  const clock = mock.clock(on)
+  agentSetup(on, () => [{ id: 'ag1', status: 'running' }], () => ({ deny: 'no such agent: ag1' }))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.agent.spawn({ ...SPAWN, prompt: 'p', description: 'explore auth', subagentType: 'Explore' })
+  await clock.settle()
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /transcript unavailable/ })).toBeDefined()
+  await ui.unmount()
 })
