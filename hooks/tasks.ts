@@ -44,3 +44,18 @@ export function expireTasks(board: Board, now: number, graceMs: number): Board {
   )
   return { ...board, tasks }
 }
+
+const AGENT_FINAL = new Set(['completed', 'failed', 'killed'])
+
+export function syncAgents(board: Board, infos: readonly { id: string; status: string }[]): Board {
+  let changed = false
+  const tasks = board.tasks.map(x => {
+    if (x.kind !== 'agent' || x.status) return x
+    const info = infos.find(i => i.id === x.id)
+    const status = !info ? 'killed' : AGENT_FINAL.has(info.status) ? info.status : undefined
+    if (!status) return x
+    changed = true
+    return { ...x, status, viewed: false }
+  })
+  return changed ? { ...board, tasks } : board
+}
