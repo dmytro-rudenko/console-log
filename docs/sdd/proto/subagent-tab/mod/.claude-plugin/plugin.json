@@ -1,0 +1,6 @@
+{
+  "name": "subagent-proto",
+  "version": "0.1.0",
+  "description": "Prototype: subagent transcript tabs in the console-log pane, three renderings on fake data",
+  "types": "./types/index.d.ts"
+}
