@@ -11,8 +11,8 @@ started: 2026-10-22
 Готово, коли субагенти з'являються як вкладки, їхній транскрипт видно в панелі, а перемикання працює тими самими клавішами.
 
 ## Now
-Building (wolowitz), PR #4. Хвилі 0 (`3d18eda`) і 1 (`0a53f2e`) закриті: 4 acceptance-тести червоні навмисно, 38 pass, tsc 0.
-Далі: хвиля 2 — задачі 2 (`hooks/transcript.ts`), 3 (`syncAgents` у `hooks/tasks.ts`), 5 (plugin.json 0.2.0 + README) паралельно; перевірка `claude plugin test .`.
+Building (wolowitz), PR #4. Хвилі 0–2 закриті (`3d18eda`, `0a53f2e`, `606f983`, `6b542ec`, `2e29350`): 50 pass, 4 acceptance-тести червоні навмисно, tsc 0.
+Далі: хвиля 3 — задача 4, `hooks/register.tsx` + `types/index.d.ts` (lines: OutLine[]); має зробити всі 4 acceptance-тести зеленими: `claude plugin test .` → 0 fail. Потім Finish: whole-branch review, security-review, журнал, gh pr ready.
 Типи рушія для tsc скопійовано в `.claude-plugin/types` (gitignored).
 Не чіпати: фільтр `e.agentId !== undefined` для Bash/Monitor у tool.call.
 
@@ -33,3 +33,8 @@ Building (wolowitz), PR #4. Хвилі 0 (`3d18eda`) і 1 (`0a53f2e`) закри
 - 14:08 ● b08e212 chore(plan): close wave 0
 - 14:08 ● 0a53f2e feat(types): agent task kind and toned output lines
 - 14:08 ✎ Хвиля 1: типи agent/OutLine додано, lines лишено string[] до хвилі 3 — tsc зелений
+- 14:08 ● 3b9bbed chore(plan): close wave 1
+- 14:13 ● 606f983 feat(console-log): render an agent transcript as toned lines
+- 14:13 ● 6b542ec feat(console-log): sync agent tab status from the agent list
+- 14:13 ● 2e29350 chore(release): 0.2.0 with subagent transcripts documented
+- 14:14 ✎ Хвиля 2: agentLines/syncAgents/0.2.0; аргумент тулу — лише перший рядок; агент поза списком = killed (рішення spec)

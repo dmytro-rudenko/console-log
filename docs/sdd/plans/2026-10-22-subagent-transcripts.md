@@ -156,7 +156,7 @@ Leave `PluginState['console-log'].lines` as `string[]` (Task 4 changes it).
 - Consumes: `OutLine` from `../types` (Task 1); `SessionMessage` from `'claude-code'` (`{ role: 'user' | 'assistant'; text: string; toolUses: ToolUseSummary[] }`, `ToolUseSummary = { tool_use_id: string; tool: string; input: Record<string, unknown>; text?: string; isError?: true; ... }`).
 - Produces: `export function agentLines(messages: readonly SessionMessage[]): OutLine[]`, `export const RESULT_LINES = 3`, `export const TRANSCRIPT_LINES = 200`.
 
-- [ ] **Step 1: write the failing test** — `hooks/transcript.test.ts`:
+- [x] **Step 1: write the failing test** — `hooks/transcript.test.ts`:
 
 ```ts
 import type { SessionMessage } from 'claude-code'
@@ -233,8 +233,8 @@ test('only the last 200 lines are kept', async () => {
 })
 ```
 
-- [ ] **Step 2: run it, watch it fail** — `claude plugin test .` → `transcript.test.ts` fails to import `./transcript`.
-- [ ] **Step 3: implement** — `hooks/transcript.ts`:
+- [x] **Step 2: run it, watch it fail** — `claude plugin test .` → `transcript.test.ts` fails to import `./transcript`.
+- [x] **Step 3: implement** — `hooks/transcript.ts`:
 
 ```ts
 import type { SessionMessage } from 'claude-code'
@@ -294,7 +294,7 @@ export function agentLines(messages: readonly SessionMessage[]): OutLine[] {
 }
 ```
 
-- [ ] **Step 4: run it, watch it pass** — `claude plugin test .` → all `transcript.test.ts` tests `(pass)`; the 4 acceptance tests still fail. `npx -y -p typescript tsc -p . --noEmit` → exit 0.
+- [x] **Step 4: run it, watch it pass** — `claude plugin test .` → all `transcript.test.ts` tests `(pass)`; the 4 acceptance tests still fail. `npx -y -p typescript tsc -p . --noEmit` → exit 0.
 
 ### Task 3: syncAgents
 
@@ -304,7 +304,7 @@ export function agentLines(messages: readonly SessionMessage[]): OutLine[] {
 - Consumes: `ConsoleTask.kind` includes `'agent'` (Task 1).
 - Produces: `export function syncAgents(board: Board, infos: readonly { id: string; status: string }[]): Board` — for each `kind === 'agent'` task without `status`: listed with `completed`/`failed`/`killed` → that status and `viewed: false`; not listed → `killed`, `viewed: false`; listed with anything else → unchanged. Non-agent tasks and agents that already have a status are untouched. Returns the same `board` object when nothing changed.
 
-- [ ] **Step 1: write the failing test** — append to `hooks/tasks.test.ts` and add `syncAgents` to its import from `./tasks`:
+- [x] **Step 1: write the failing test** — append to `hooks/tasks.test.ts` and add `syncAgents` to its import from `./tasks`:
 
 ```ts
 const ag = (id: string, extra: Partial<ConsoleTask> = {}): ConsoleTask => t(id, { kind: 'agent', ...extra })
@@ -328,8 +328,8 @@ test('syncAgents leaves running, waiting and idle agents, shells and finished ag
 })
 ```
 
-- [ ] **Step 2: run it, watch it fail** — `claude plugin test .` → `syncAgents` is not exported.
-- [ ] **Step 3: implement** — append to `hooks/tasks.ts`:
+- [x] **Step 2: run it, watch it fail** — `claude plugin test .` → `syncAgents` is not exported.
+- [x] **Step 3: implement** — append to `hooks/tasks.ts`:
 
 ```ts
 const AGENT_FINAL = new Set(['completed', 'failed', 'killed'])
@@ -348,7 +348,7 @@ export function syncAgents(board: Board, infos: readonly { id: string; status: s
 }
 ```
 
-- [ ] **Step 4: run it, watch it pass** — `claude plugin test .` → the three `syncAgents` tests `(pass)`. `npx -y -p typescript tsc -p . --noEmit` → exit 0.
+- [x] **Step 4: run it, watch it pass** — `claude plugin test .` → the three `syncAgents` tests `(pass)`. `npx -y -p typescript tsc -p . --noEmit` → exit 0.
 
 ### Task 4: wire agents into the pane
 
@@ -456,16 +456,16 @@ No `.catch` on this hook (a fallback `next(e)` would spawn twice if `next` threw
 **Writes:** `.claude-plugin/plugin.json`, `README.md`
 **Depends on:** Task 0
 
-- [ ] **Step 1: plugin.json** — `"version": "0.2.0"`, `"description": "Live pane beside the chat with the last 200 lines of background Bash and Monitor tasks and the transcripts of subagents"`.
-- [ ] **Step 2: README, English** — first paragraph: after "…refreshes every second." insert "Each subagent gets a tab too, with its transcript." In `## Behaviour`, after the bash-mode bullet, add:
+- [x] **Step 1: plugin.json** — `"version": "0.2.0"`, `"description": "Live pane beside the chat with the last 200 lines of background Bash and Monitor tasks and the transcripts of subagents"`.
+- [x] **Step 2: README, English** — first paragraph: after "…refreshes every second." insert "Each subagent gets a tab too, with its transcript." In `## Behaviour`, after the bash-mode bullet, add:
   - `- Every subagent (foreground, background or nested) gets a tab labelled \`Type·description\`. Its body, framed \`TRANSCRIPT\`, shows the first line of its prompt (\`▸\`), its text, each tool call as \`→ Tool: argument\`, and up to three lines of each tool result (\`… +N lines\` for the rest, \`✗\` on an error, \`…\` while the tool runs).`
   - `- A subagent's tab follows the marks below. A subagent the session no longer lists shows \`■\`.`
   In `## Limits` add: `- A tool result in a subagent's tab shows at most three lines.` and `- Workflow agents and teammates in their own terminal panes get no tab.`
-- [ ] **Step 3: README, Ukrainian** — first paragraph: after "…і оновлюється щосекунди." insert "Кожен субагент теж отримує вкладку зі своїм транскриптом." In `### Поведінка`, before the `◐` bullet, add:
+- [x] **Step 3: README, Ukrainian** — first paragraph: after "…і оновлюється щосекунди." insert "Кожен субагент теж отримує вкладку зі своїм транскриптом." In `### Поведінка`, before the `◐` bullet, add:
   - `- Кожен субагент (звичайний, фоновий чи вкладений) отримує вкладку з підписом \`Тип·опис\`. Її тіло в рамці \`TRANSCRIPT\` показує перший рядок промпту (\`▸\`), текст агента, кожен виклик тулу як \`→ Tool: аргумент\` і до трьох рядків результату (\`… +N lines\` для решти, \`✗\` на помилці, \`…\` поки тул працює).`
   - `- Вкладка субагента підкоряється тим самим позначкам, що нижче. Субагент, якого сесія вже не показує в списку, отримує \`■\`.`
   In `### Обмеження` add: `- Результат тулу у вкладці субагента показує щонайбільше три рядки.` and `- Агенти воркфлоу й teammates в окремих терміналах вкладки не отримують.`
-- [ ] **Step 4: check** — `claude plugin validate .` → `✔ Validation passed`.
+- [x] **Step 4: check** — `claude plugin validate .` → `✔ Validation passed`.
 
 ## Verification (after wave 3)
 
