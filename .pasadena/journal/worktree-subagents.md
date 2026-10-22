@@ -1,7 +1,7 @@
 ---
 branch: worktree-subagents
 spec: docs/sdd/specs/2026-10-22-subagent-transcripts.md
-plan: -
+plan: docs/sdd/plans/2026-10-22-subagent-transcripts.md
 status: in-progress
 started: 2026-10-22
 ---
@@ -13,8 +13,8 @@ started: 2026-10-22
 ## Now
 Shaping, architectural. Дизайн погоджено (3 секції): підхід A — хук `agent.spawn` + опитування `$.agent.list()`, текст вибраного агента з `$.session.messages({ agentId })` → `agentLines()` у `hooks/transcript.ts`; `kind: 'agent'` у тому ж Board; усі субагенти; ✓ зникає за 10 с; текст + тули + 3 рядки результату; `syncAgents()` у tasks.ts; версія 0.2.0.
 Прототип підписано: варіант A (`docs/sdd/proto/subagent-tab/decision.md`).
-Spec написано й закомічено, draft PR відкрито. Чекаємо, поки користувач перегляне spec.
-Далі: після схвалення — leonard (план).
+Spec і план схвалено, draft PR #4. Building (wolowitz): хвилі 0 → 1 → {2,3,5} → 4.
+Далі: Wave 0 — acceptance-тести в `hooks/pane.test.tsx`, `claude plugin test .` → `38 pass, 4 fail`.
 Не чіпати: фільтр `e.agentId !== undefined` для Bash/Monitor у tool.call.
 
 ## Timeline
@@ -26,3 +26,4 @@ Spec написано й закомічено, draft PR відкрито. Чек
 - 13:49 ✎ Прототип підписано: варіант A (log) — текст, → Tool: arg, 3 рядки результату; B і C відкинуто
 - 13:49 ● 5191347 docs(proto): subagent transcript tab prototype, variant A chosen
 - 13:50 ✎ Spec написано: OutLine з tone замість кольору з префікса; syncAgents, agentLines, версія 0.2.0
+- 13:50 ● 95ca492 docs(spec): subagent transcripts in the console-log pane
