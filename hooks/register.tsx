@@ -23,7 +23,7 @@ const EXPIRE_GRACE_MS = 5000
 
 const tasks = atom({ plugin: 'console-log', key: 'tasks' } as const, [] as ConsoleTask[])
 const selected = atom({ plugin: 'console-log', key: 'selected' } as const, -1)
-const lines = atom({ plugin: 'console-log', key: 'lines' } as const, [] as OutLine[])
+const lines = atom({ plugin: 'console-log', key: 'lines' } as const, [] as OutLine[], { shape: 'out-lines' })
 const pathMissing = atom({ plugin: 'console-log', key: 'pathMissing' } as const, false)
 const readFailed = atom({ plugin: 'console-log', key: 'readFailed' } as const, false)
 const dismissed = atom({ plugin: 'console-log', key: 'dismissed' } as const, false)
@@ -127,11 +127,11 @@ async function syncAgentStatus($: EngineInterface) {
     done = after.tasks.filter((x, i) => x.status === 'completed' && !b.tasks[i]?.status).map(x => x.id)
     return after
   })
-  for (const id of done) $.clock.after(DROP_COMPLETED_MS, () => void dropIfCompleted($, id).catch(() => undefined))
+  for (const id of done) $.clock.after(DROP_COMPLETED_MS, () => void dropIfStill($, id, 'completed').catch(() => undefined))
 }
 
-async function dropIfCompleted($: EngineInterface, id: string) {
-  if ((await read($, tasks)).find(x => x.id === id)?.status !== 'completed') return
+async function dropIfStill($: EngineInterface, id: string, status: string) {
+  if ((await read($, tasks)).find(x => x.id === id)?.status !== status) return
   await drop($, id)
 }
 
@@ -180,7 +180,7 @@ async function stop($: EngineInterface, id: string) {
   const b = await mutate($, x => applyNotification(x, { id, status: 'killed' }))
   if (!b.tasks.some(x => x.id === id)) return
   await refresh($)
-  $.clock.after(DROP_COMPLETED_MS, () => void drop($, id).catch(() => undefined))
+  $.clock.after(DROP_COMPLETED_MS, () => void dropIfStill($, id, 'killed').catch(() => undefined))
 }
 
 async function exit($: EngineInterface) {
@@ -218,6 +218,8 @@ async function track(
   const startedAt = await $.clock.now()
   const deadline = timeoutMs === undefined ? undefined : startedAt + timeoutMs
   await mutate($, b => addTask(b, { ...seed, startedAt, deadline }))
+  await update($, lines, () => [])
+  await update($, readFailed, () => false)
   tick($)
   const path = seed.kind === 'agent' ? undefined : (known ?? (await findOutput($, seed.id).catch(() => undefined)))
   if (path) await mutate($, b => ({ ...b, tasks: b.tasks.map(x => (x.id === seed.id ? { ...x, path } : x)) }))
@@ -327,7 +329,7 @@ export const register: Register = on => {
       const b = n ? await mutate($, x => applyNotification(x, n)) : undefined
       if (n && b?.tasks.some(x => x.id === n.id)) {
         await refresh($)
-        if (n.status === 'completed') $.clock.after(DROP_COMPLETED_MS, () => void drop($, n.id).catch(() => undefined))
+        if (n.status === 'completed') $.clock.after(DROP_COMPLETED_MS, () => void dropIfStill($, n.id, 'completed').catch(() => undefined))
       }
     }
     return next(e)

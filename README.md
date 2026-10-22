@@ -67,7 +67,7 @@ Trade-off: once you add the snippet, `ctrl+→` in the prompt no longer jumps to
 - ANSI colours are stripped from the output.
 - The pane frame (the grey lines and the `✕`) is drawn by Claude Code, not by the mod.
 - A tool result in a subagent's tab shows at most three lines.
-- Workflow agents and teammates in their own terminal panes get no tab.
+- Workflow agents and teammates get no tab.
 
 ## Development
 
@@ -141,7 +141,7 @@ claude plugin install console-log --marketplace dmytro-rudenko/console-log
 - ANSI-кольори з виводу вирізаються.
 - Рамку панелі (сірі рядки та `✕`) малює Claude Code, а не мод.
 - Результат тулу у вкладці субагента показує щонайбільше три рядки.
-- Агенти воркфлоу й teammates в окремих терміналах вкладки не отримують.
+- Агенти воркфлоу й teammates вкладки не отримують.
 
 ### Розробка
 

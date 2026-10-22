@@ -321,6 +321,33 @@ test('an unreadable transcript says so', async ($, on) => {
   await ui.unmount()
 })
 
+test('a finished subagent resumed within 10 seconds keeps its tab', async ($, on) => {
+  const clock = mock.clock(on)
+  let status: AgentStatus = 'running'
+  const closed: string[] = []
+  agentSetup(on, () => [{ id: 'ag1', status }], () => TRANSCRIPT_FIXTURE)
+  on('prompt.submit', (_, e) => e)
+  on('ui.close', (_, e) => {
+    closed.push(e.id)
+    return { value: undefined }
+  })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.agent.spawn({ ...SPAWN, prompt: 'p', description: 'explore auth', subagentType: 'Explore' })
+  await clock.settle()
+  status = 'completed'
+  await $.prompt.submit({ text: note('ag1', 'completed', 'Agent "explore auth" completed'), origin: { kind: 'task-notification' }, wait: false })
+  await clock.advance(1500)
+  status = 'running'
+  await $.agent.spawn({ ...SPAWN, prompt: 'more', description: 'explore auth', subagentType: 'Explore' })
+  await clock.settle()
+  await clock.advance(11000)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /Explore·explore auth/ })).toBeDefined()
+  await ui.unmount()
+  expect(closed).toEqual([])
+})
+
 test('a workflow agent does not become a tab', async ($, on) => {
   const clock = mock.clock(on)
   agentSetup(on, () => [], () => ({ deny: 'no such agent: ag1' }))
