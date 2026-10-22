@@ -1,11 +1,12 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
-import type { Board, ConsoleTask } from '../types'
+import type { Board, ConsoleTask, OutLine } from '../types'
 import { age, bottomParts, fit, mark, paneHint, statusText, tabLabel, tabWidth, tabWindow, topParts } from './layout'
 import { parseBashInput, parseTaskNotification, parseUserBackground } from './notification'
 import { sanitize } from './sanitize'
-import { addTask, applyNotification, dropTask, expireTasks, hasRunning, selectTask } from './tasks'
+import { addTask, applyNotification, dropTask, expireTasks, hasRunning, selectTask, syncAgents } from './tasks'
+import { agentLines } from './transcript'
 
 const PANE = 'console-log'
 const TITLE = 'Background output'
@@ -22,7 +23,7 @@ const EXPIRE_GRACE_MS = 5000
 
 const tasks = atom({ plugin: 'console-log', key: 'tasks' } as const, [] as ConsoleTask[])
 const selected = atom({ plugin: 'console-log', key: 'selected' } as const, -1)
-const lines = atom({ plugin: 'console-log', key: 'lines' } as const, [] as string[])
+const lines = atom({ plugin: 'console-log', key: 'lines' } as const, [] as OutLine[])
 const pathMissing = atom({ plugin: 'console-log', key: 'pathMissing' } as const, false)
 const readFailed = atom({ plugin: 'console-log', key: 'readFailed' } as const, false)
 const dismissed = atom({ plugin: 'console-log', key: 'dismissed' } as const, false)
@@ -56,6 +57,22 @@ function mutate($: EngineInterface, fn: (b: Board) => Board): Promise<Board> {
 
 async function load($: EngineInterface) {
   const task = (await read($, tasks))[await read($, selected)]
+  if (task?.kind === 'agent') {
+    await update($, pathMissing, () => false)
+    try {
+      const found = await $.session.messages({ agentId: task.id })
+      if ('deny' in found) {
+        await update($, readFailed, () => true)
+        return
+      }
+      const next = agentLines(found).map(l => ({ ...l, text: sanitize(l.text).slice(0, LINE_MAX) }))
+      await update($, readFailed, () => false)
+      await update($, lines, () => next)
+    } catch {
+      await update($, readFailed, () => true)
+    }
+    return
+  }
   if (!task?.path) {
     await update($, pathMissing, () => Boolean(task))
     await update($, readFailed, () => false)
@@ -72,7 +89,7 @@ async function load($: EngineInterface) {
     const next = stdout.split('\n')
     if (next.at(-1) === '') next.pop()
     await update($, readFailed, () => false)
-    await update($, lines, () => next.map(l => sanitize(l).slice(0, LINE_MAX)))
+    await update($, lines, () => next.map((l): OutLine => ({ text: sanitize(l).slice(0, LINE_MAX), tone: 'text' })))
   } catch {
     await update($, readFailed, () => true)
   }
@@ -96,7 +113,30 @@ async function refresh($: EngineInterface) {
   }
 }
 
+async function syncAgentStatus($: EngineInterface) {
+  if (!(await board($)).tasks.some(x => x.kind === 'agent' && !x.status)) return
+  let infos: { id: string; status: string }[]
+  try {
+    infos = await $.agent.list()
+  } catch {
+    return
+  }
+  let done: string[] = []
+  await mutate($, b => {
+    const after = syncAgents(b, infos)
+    done = after.tasks.filter((x, i) => x.status === 'completed' && !b.tasks[i]?.status).map(x => x.id)
+    return after
+  })
+  for (const id of done) $.clock.after(DROP_COMPLETED_MS, () => void dropIfCompleted($, id).catch(() => undefined))
+}
+
+async function dropIfCompleted($: EngineInterface, id: string) {
+  if ((await read($, tasks)).find(x => x.id === id)?.status !== 'completed') return
+  await drop($, id)
+}
+
 async function poll($: EngineInterface) {
+  await syncAgentStatus($)
   const now = await $.clock.now()
   const b = await mutate($, x => expireTasks(x, now, EXPIRE_GRACE_MS))
   if (!hasRunning(b)) {
@@ -175,11 +215,11 @@ async function track(
   timeoutMs: number | undefined,
   known?: string,
 ) {
-  tick($)
   const startedAt = await $.clock.now()
   const deadline = timeoutMs === undefined ? undefined : startedAt + timeoutMs
   await mutate($, b => addTask(b, { ...seed, startedAt, deadline }))
-  const path = known ?? (await findOutput($, seed.id).catch(() => undefined))
+  tick($)
+  const path = seed.kind === 'agent' ? undefined : (known ?? (await findOutput($, seed.id).catch(() => undefined)))
   if (path) await mutate($, b => ({ ...b, tasks: b.tasks.map(x => (x.id === seed.id ? { ...x, path } : x)) }))
   await refresh($)
   await openPane($)
@@ -202,6 +242,20 @@ async function readCtrlArrows($: EngineInterface): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+async function spawned($: EngineInterface, e: { subagentType: string; description: string }, id: string) {
+  const type = clean(e.subagentType)
+  const desc = clean(e.description) || type
+  await track($, { id, kind: 'agent', command: `${type}: ${desc}`, label: `${type}·${desc}` }, undefined)
+}
+
+const TONE: Record<OutLine['tone'], { color?: string; dim?: boolean }> = {
+  text: {},
+  tool: { color: 'cyan' },
+  result: { dim: true },
+  error: { color: 'red' },
+  muted: { dim: true },
 }
 
 export const register: Register = on => {
@@ -247,6 +301,12 @@ export const register: Register = on => {
     return ran
   }).catch(($, e, next) => next(e))
 
+  on('agent.spawn', async ($, e, next) => {
+    const r = await next(e)
+    if (r.agentId && !e.workflow && !e.isTeammate) void spawned($, e, r.agentId).catch(() => undefined)
+    return r
+  })
+
   on('session.append', async ($, e, next) => {
     if (e.agentId !== undefined || e.message.type !== 'user') return next(e)
     const text = e.message.content.map(c => (c.type === 'text' ? c.text : '')).join('\n')
@@ -285,6 +345,8 @@ export const register: Register = on => {
     const id = e.element?.startsWith('tab-') ? e.element.slice(4) : undefined
     const i = id ? b.tasks.findIndex(x => x.id === id) : -1
     if (i >= 0 && i !== b.selected) {
+      await update($, lines, () => [])
+      await update($, readFailed, () => false)
       await mutate($, x => {
         const j = x.tasks.findIndex(t => t.id === id)
         return j >= 0 ? selectTask(x, j) : x
@@ -344,10 +406,10 @@ export const register: Register = on => {
         </Text>
       )
     }
-    const row = (text: string, key: string, dim = false) => (
+    const row = (line: OutLine, key: string) => (
       <Text key={key} wrap="truncate">
         <Text color="gray">│ </Text>
-        <Text dimColor={dim}>{fit(text, inner)}</Text>
+        <Text color={TONE[line.tone].color} dimColor={TONE[line.tone].dim}>{fit(line.text, inner)}</Text>
         <Text color="gray"> │</Text>
       </Text>
     )
@@ -377,9 +439,10 @@ export const register: Register = on => {
     )
 
     const room = R - 5
-    const out = missing ? ['output file not found'] : body.slice(-room)
-    while (task && out.length < room) out.push('')
-    const right = task ? `${statusText(task)}${failed ? ' · file unavailable' : ''}` : ''
+    const out: OutLine[] = missing ? [{ text: 'output file not found', tone: 'muted' }] : body.slice(-room)
+    while (task && out.length < room) out.push({ text: '', tone: 'text' })
+    const isAgent = task?.kind === 'agent'
+    const right = task ? `${statusText(task)}${failed ? (isAgent ? ' · transcript unavailable' : ' · file unavailable') : ''}` : ''
 
     return (
       <Box flexDirection="column" width={W} height={R} backgroundColor="black">
@@ -390,8 +453,8 @@ export const register: Register = on => {
           <Text color="gray"> │</Text>
         </Box>
         {bottom(paneHint(e.props.isFocused, bound))}
-        {task && top('OUTPUT', right)}
-        {task && out.map((l, i) => row(l, `o${i}`, missing))}
+        {task && top(isAgent ? 'TRANSCRIPT' : 'OUTPUT', right)}
+        {task && out.map((l, i) => row(l, `o${i}`))}
         {task && bottom(task.command)}
       </Box>
     )

@@ -22,7 +22,7 @@ declare module 'claude-code' {
     'console-log': {
       tasks: ConsoleTask[]
       selected: number
-      lines: string[]
+      lines: OutLine[]
       pathMissing: boolean
       readFailed: boolean
       dismissed: boolean

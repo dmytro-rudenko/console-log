@@ -320,3 +320,15 @@ test('an unreadable transcript says so', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: /transcript unavailable/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('a workflow agent does not become a tab', async ($, on) => {
+  const clock = mock.clock(on)
+  agentSetup(on, () => [], () => ({ deny: 'no such agent: ag1' }))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.agent.spawn({ ...SPAWN, prompt: 'p', description: 'explore auth', subagentType: 'Explore', workflow: { runId: 'wf_1', agentIndex: 1 } })
+  await clock.settle()
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /No background tasks yet\./ })).toBeDefined()
+  await ui.unmount()
+})
