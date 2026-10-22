@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Board, ConsoleTask } from '../types'
-import { addTask, applyNotification, dropTask, expireTasks, hasRunning, MAX_TASKS, selectTask, syncAgents } from './tasks'
+import { addTask, applyNotification, dropTask, expireTasks, hasRunning, MAX_TASKS, selectTask, syncAgents, unseenAgents } from './tasks'
 
 const t = (id: string, extra: Partial<ConsoleTask> = {}): ConsoleTask => ({ id, kind: 'shell', command: id, startedAt: 0, ...extra })
 const empty: Board = { tasks: [], selected: -1 }
@@ -93,4 +93,17 @@ test('syncAgents leaves pending, running, waiting and idle agents, shells and fi
     { id: 'd', status: 'completed' },
   ]
   expect(syncAgents(b, infos)).toBe(b)
+})
+
+test('unseenAgents keeps live subagents the board lacks and skips teammates and finished ones', async () => {
+  const b: Board = { tasks: [ag('known')], selected: 0 }
+  const infos = [
+    { id: 'known', status: 'running', type: 'Explore' },
+    { id: 'new', status: 'running', type: 'general-purpose' },
+    { id: 'wait', status: 'pending', type: 'Explore' },
+    { id: 'done', status: 'completed', type: 'Explore' },
+    { id: 'mate', status: 'running', type: 'teammate' },
+    { id: 'named', status: 'idle', type: 'Explore', teammateId: 'bob@crew' },
+  ]
+  expect(unseenAgents(b, infos).map(i => i.id)).toEqual(['new', 'wait'])
 })

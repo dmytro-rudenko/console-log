@@ -59,3 +59,12 @@ export function syncAgents(board: Board, infos: readonly { id: string; status: s
   })
   return changed ? { ...board, tasks } : board
 }
+
+export function unseenAgents<T extends { id: string; status: string; type: string; teammateId?: string }>(
+  board: Board,
+  infos: readonly T[],
+): T[] {
+  return infos.filter(
+    i => !i.teammateId && i.type !== 'teammate' && !AGENT_FINAL.has(i.status) && !board.tasks.some(x => x.id === i.id),
+  )
+}

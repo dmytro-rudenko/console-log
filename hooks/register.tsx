@@ -5,7 +5,7 @@ import type { Board, ConsoleTask, OutLine } from '../types'
 import { age, bottomParts, fit, mark, paneHint, statusText, tabLabel, tabWidth, tabWindow, topParts } from './layout'
 import { parseBashInput, parseTaskNotification, parseUserBackground } from './notification'
 import { sanitize } from './sanitize'
-import { addTask, applyNotification, dropTask, expireTasks, hasRunning, selectTask, syncAgents } from './tasks'
+import { addTask, applyNotification, dropTask, expireTasks, hasRunning, selectTask, syncAgents, unseenAgents } from './tasks'
 import { agentLines } from './transcript'
 
 const PANE = 'console-log'
@@ -252,6 +252,11 @@ async function spawned($: EngineInterface, e: { subagentType: string; descriptio
   await track($, { id, kind: 'agent', command: `${type}: ${desc}`, label: `${type}·${desc}` }, undefined)
 }
 
+async function adoptAgents($: EngineInterface) {
+  const infos = await $.agent.list()
+  for (const i of unseenAgents(await board($), infos)) await spawned($, { subagentType: i.type, description: i.description }, i.id)
+}
+
 const TONE: Record<OutLine['tone'], { color?: string; dim?: boolean }> = {
   text: {},
   tool: { color: 'cyan' },
@@ -267,7 +272,9 @@ export const register: Register = on => {
     const bound = await readCtrlArrows($)
     await update($, hasCtrlArrows, () => bound)
     if (hasRunning(b)) tick($)
-    return next(e)
+    const r = await next(e)
+    void adoptAgents($).catch(() => undefined)
+    return r
   })
 
   on('tool.call', async ($, e, next) => {
@@ -367,6 +374,7 @@ export const register: Register = on => {
 
   on('command.run', { command: 'console-log' }, async $ => {
     await update($, dismissed, () => false)
+    await adoptAgents($).catch(() => undefined)
     await $.ui.open({ id: PANE, title: TITLE, columns: COLUMNS })
     void refresh($).catch(() => undefined)
     return { text: 'Background output pane opened.' }
