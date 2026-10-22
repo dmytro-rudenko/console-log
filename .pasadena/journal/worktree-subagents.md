@@ -11,8 +11,8 @@ started: 2026-10-22
 Готово, коли субагенти з'являються як вкладки, їхній транскрипт видно в панелі, а перемикання працює тими самими клавішами.
 
 ## Now
-Building (wolowitz), PR #4. Хвиля 0 закрита (`3d18eda`): 4 acceptance-тести червоні навмисно, 38 pass, tsc 0.
-Далі: хвиля 1 — задача 1, `types/index.d.ts` (kind 'agent' + OutLine); перевірка `npx -y -p typescript tsc -p . --noEmit` і `claude plugin test .` → 38 pass / 4 fail.
+Building (wolowitz), PR #4. Хвилі 0 (`3d18eda`) і 1 (`0a53f2e`) закриті: 4 acceptance-тести червоні навмисно, 38 pass, tsc 0.
+Далі: хвиля 2 — задачі 2 (`hooks/transcript.ts`), 3 (`syncAgents` у `hooks/tasks.ts`), 5 (plugin.json 0.2.0 + README) паралельно; перевірка `claude plugin test .`.
 Типи рушія для tsc скопійовано в `.claude-plugin/types` (gitignored).
 Не чіпати: фільтр `e.agentId !== undefined` для Bash/Monitor у tool.call.
 
@@ -30,3 +30,6 @@ Building (wolowitz), PR #4. Хвиля 0 закрита (`3d18eda`): 4 acceptanc
 - 14:00 ✎ План схвалено: 6 задач, 4 хвилі; agent.spawn без .catch, щоб не спавнити двічі
 - 14:07 ● 3d18eda test(console-log): acceptance tests for subagent transcript tabs
 - 14:08 ✎ Хвиля 0: acceptance-тести червоні з правильної причини; мок session.messages прив'язано до agentId
+- 14:08 ● b08e212 chore(plan): close wave 0
+- 14:08 ● 0a53f2e feat(types): agent task kind and toned output lines
+- 14:08 ✎ Хвиля 1: типи agent/OutLine додано, lines лишено string[] до хвилі 3 — tsc зелений

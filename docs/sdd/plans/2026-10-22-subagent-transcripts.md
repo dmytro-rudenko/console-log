@@ -138,14 +138,14 @@ Add `import type { On } from 'claude-code'` at the top of the file. If the test'
 **Interfaces:**
 - Produces: `ConsoleTask.kind: 'shell' | 'monitor' | 'agent'`; `export type OutLine = { text: string; tone: 'text' | 'tool' | 'result' | 'error' | 'muted' }`.
 
-- [ ] **Step 1: edit** — in `types/index.d.ts` change `kind: 'shell' | 'monitor'` to `kind: 'shell' | 'monitor' | 'agent'`, and after the `TaskNotification` type add:
+- [x] **Step 1: edit** — in `types/index.d.ts` change `kind: 'shell' | 'monitor'` to `kind: 'shell' | 'monitor' | 'agent'`, and after the `TaskNotification` type add:
 
 ```ts
 export type OutLine = { text: string; tone: 'text' | 'tool' | 'result' | 'error' | 'muted' }
 ```
 
 Leave `PluginState['console-log'].lines` as `string[]` (Task 4 changes it).
-- [ ] **Step 2: type-check** — `npx -y -p typescript tsc -p . --noEmit` → exit 0. `claude plugin test .` → still `38 pass`, `4 fail`.
+- [x] **Step 2: type-check** — `npx -y -p typescript tsc -p . --noEmit` → exit 0. `claude plugin test .` → still `38 pass`, `4 fail`.
 
 ### Task 2: agentLines
 
