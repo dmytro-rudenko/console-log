@@ -63,7 +63,7 @@ Trade-off: once you add the snippet, `ctrl+→` in the prompt no longer jumps to
 
 ## Limits
 
-- Only background tasks started after the mod loaded are shown.
+- Only background Bash and Monitor tasks started after the mod loaded are shown. Subagents already running when the mod loads, or when you run `/console-log`, get a tab too.
 - ANSI colours are stripped from the output.
 - The pane frame (the grey lines and the `✕`) is drawn by Claude Code, not by the mod.
 - A tool result in a subagent's tab shows at most three lines.
@@ -137,7 +137,7 @@ claude plugin install console-log --marketplace dmytro-rudenko/console-log
 
 ### Обмеження
 
-- Показуються лише фонові задачі, запущені після завантаження мода.
+- Показуються лише фонові задачі Bash і Monitor, запущені після завантаження мода. Субагенти, що вже працюють, коли мод завантажується або коли ви виконуєте `/console-log`, теж отримують вкладку.
 - ANSI-кольори з виводу вирізаються.
 - Рамку панелі (сірі рядки та `✕`) малює Claude Code, а не мод.
 - Результат тулу у вкладці субагента показує щонайбільше три рядки.

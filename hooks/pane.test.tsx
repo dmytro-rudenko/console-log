@@ -359,3 +359,35 @@ test('a workflow agent does not become a tab', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: /No background tasks yet\./ })).toBeDefined()
   await ui.unmount()
 })
+
+test('a subagent already running when the mod loads becomes a tab', async ($, on) => {
+  const clock = mock.clock(on)
+  agentSetup(on, () => [{ id: 'ag1', status: 'running' }], () => TRANSCRIPT_FIXTURE)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await clock.settle()
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /Explore·explore auth/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /▸ Find the refresh token/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('/console-log picks up a running subagent the pane never saw spawn', async ($, on) => {
+  const clock = mock.clock(on)
+  let listed: { id: string; status: AgentStatus }[] = []
+  agentSetup(on, () => listed, () => TRANSCRIPT_FIXTURE)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await clock.settle()
+  listed = [{ id: 'ag1', status: 'running' }]
+  await $.command.run({
+    command: 'console-log',
+    args: '',
+    origin: { kind: 'composer' },
+    presentation: { isFullscreen: true, columns: 160 },
+  })
+  await clock.settle()
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /Explore·explore auth/ })).toBeDefined()
+  await ui.unmount()
+})
