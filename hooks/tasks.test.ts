@@ -1,90 +1,52 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Board, ConsoleTask } from '../types'
-import { addTask, applyNotification, dropTask, expireTasks, hasRunning, MAX_TASKS, selectTask, syncAgents, unseenAgents } from './tasks'
+import { addTask, applyNotification, expireTasks, hasRunning, MAX_TASKS, pick, sweep, syncAgents, unseenAgents } from './tasks'
 
 const t = (id: string, extra: Partial<ConsoleTask> = {}): ConsoleTask => ({ id, kind: 'shell', command: id, startedAt: 0, ...extra })
-const empty: Board = { tasks: [], selected: -1 }
+const ag = (id: string, extra: Partial<ConsoleTask> = {}): ConsoleTask => t(id, { kind: 'agent', ...extra })
+const b = (...tasks: ConsoleTask[]): Board => ({ tasks })
 
-test('addTask appends, selects the new task and keeps the last 20', async () => {
-  let b = empty
-  for (let i = 0; i < MAX_TASKS + 2; i++) b = addTask(b, t(`b${i}`))
-  expect(b.tasks.length).toBe(MAX_TASKS)
-  expect(b.tasks[0]?.id).toBe('b2')
-  expect(b.selected).toBe(MAX_TASKS - 1)
+test('addTask appends, replaces a task with the same id and keeps the last 20', async () => {
+  let x = b()
+  for (let i = 0; i < MAX_TASKS + 2; i++) x = addTask(x, t(`b${i}`))
+  expect(x.tasks.length).toBe(MAX_TASKS)
+  expect(x.tasks[0]?.id).toBe('b2')
+  const again = addTask(b(t('a', { status: 'completed', endedAt: 5 }), t('c')), t('a', { startedAt: 9 }))
+  expect(again.tasks.map(y => [y.id, y.status, y.endedAt])).toEqual([['c', undefined, undefined], ['a', undefined, undefined]])
 })
 
-test('applyNotification never marks a task viewed, even the selected one', async () => {
-  const b = addTask(addTask(empty, t('a')), t('b'))
-  const failedSelected = applyNotification(b, { id: 'b', status: 'failed', exitCode: 1 })
-  expect(failedSelected.tasks[1]).toEqual({ ...t('b'), status: 'failed', exitCode: 1, viewed: false })
-  const failedOther = applyNotification(b, { id: 'a', status: 'failed', exitCode: 2 })
-  expect(failedOther.tasks[0]?.viewed).toBe(false)
-  const done = applyNotification(b, { id: 'b', status: 'completed', exitCode: 0 })
-  expect(done.tasks[1]?.viewed).toBe(false)
-  expect(applyNotification(b, { id: 'zz', status: 'failed' })).toBe(b)
+test('applyNotification sets status, exit code and endedAt once', async () => {
+  const x = b(t('a'), t('c'))
+  const failed = applyNotification(x, { id: 'a', status: 'failed', exitCode: 1 }, 700)
+  expect(failed.tasks[0]).toEqual({ ...t('a'), status: 'failed', exitCode: 1, endedAt: 700 })
+  expect(applyNotification(failed, { id: 'a', status: 'failed', exitCode: 1 }, 900).tasks[0]?.endedAt).toBe(700)
+  expect(applyNotification(x, { id: 'zz', status: 'failed' }, 1)).toBe(x)
 })
 
-test('a failed task selected when it fails survives moving away once, and goes after a visit', async () => {
-  let b: Board = { tasks: [t('a'), t('b')], selected: 0 }
-  b = applyNotification(b, { id: 'a', status: 'failed', exitCode: 1 })
-  b = selectTask(b, 1)
-  expect(b.tasks.map(x => x.id)).toEqual(['a', 'b'])
-  b = selectTask(b, 0)
-  expect(b.tasks[0]?.viewed).toBe(true)
-  b = selectTask(b, 1)
-  expect(b.tasks.map(x => x.id)).toEqual(['b'])
-})
-
-test('expireTasks marks running tasks past deadline plus grace as expired', async () => {
-  const b: Board = {
-    tasks: [t('a', { deadline: 1000 }), t('b', { deadline: 9000 }), t('c'), t('d', { deadline: 1000, status: 'failed' })],
-    selected: 0,
-  }
-  const next = expireTasks(b, 7000, 5000)
-  expect(next.tasks.map(x => x.status)).toEqual(['expired', undefined, undefined, 'failed'])
-  expect(next.selected).toBe(0)
-  expect(expireTasks(b, 6000, 5000).tasks[0]?.status).toBeUndefined()
-})
-
-test('selectTask marks a finished target viewed and drops the viewed task it leaves', async () => {
-  let b: Board = { tasks: [t('a', { status: 'failed', exitCode: 1 }), t('b'), t('c')], selected: 2 }
-  b = selectTask(b, 0)
-  expect(b.selected).toBe(0)
-  expect(b.tasks[0]?.viewed).toBe(true)
-  b = selectTask(b, 1)
-  expect(b.tasks.map(x => x.id)).toEqual(['b', 'c'])
-  expect(b.selected).toBe(0)
-})
-
-test('dropTask keeps the selection by id and closes to -1 when empty', async () => {
-  const b: Board = { tasks: [t('a'), t('b'), t('c')], selected: 2 }
-  expect(dropTask(b, 'a')).toEqual({ tasks: [t('b'), t('c')], selected: 1 })
-  expect(dropTask(b, 'c')).toEqual({ tasks: [t('a'), t('b')], selected: 1 })
-  expect(dropTask({ tasks: [t('a')], selected: 0 }, 'a')).toEqual({ tasks: [], selected: -1 })
+test('expireTasks marks running tasks past deadline plus grace as expired and stamps endedAt', async () => {
+  const x = b(t('a', { deadline: 1000 }), t('b', { deadline: 9000 }), t('c'), t('d', { deadline: 1000, status: 'failed', endedAt: 3 }))
+  const next = expireTasks(x, 7000, 5000)
+  expect(next.tasks.map(y => [y.status, y.endedAt])).toEqual([['expired', 7000], [undefined, undefined], [undefined, undefined], ['failed', 3]])
+  expect(expireTasks(x, 6000, 5000)).toBe(x)
 })
 
 test('hasRunning is true while any task has no status', async () => {
-  expect(hasRunning({ tasks: [t('a', { status: 'completed' }), t('b')], selected: 0 })).toBe(true)
-  expect(hasRunning({ tasks: [t('a', { status: 'failed' })], selected: 0 })).toBe(false)
+  expect(hasRunning(b(t('a', { status: 'completed' }), t('b')))).toBe(true)
+  expect(hasRunning(b(t('a', { status: 'failed' })))).toBe(false)
 })
 
-const ag = (id: string, extra: Partial<ConsoleTask> = {}): ConsoleTask => t(id, { kind: 'agent', ...extra })
-
-test('syncAgents gives an agent its final status from the list', async () => {
-  const b: Board = { tasks: [ag('a'), ag('b'), ag('c')], selected: 0 }
-  const after = syncAgents(b, [{ id: 'a', status: 'completed' }, { id: 'b', status: 'failed' }, { id: 'c', status: 'killed' }])
-  expect(after.tasks.map(x => [x.status, x.viewed])).toEqual([['completed', false], ['failed', false], ['killed', false]])
-  expect(after.selected).toBe(0)
+test('syncAgents gives an agent its final status and endedAt from the list', async () => {
+  const after = syncAgents(b(ag('a'), ag('b'), ag('c')), [{ id: 'a', status: 'completed' }, { id: 'b', status: 'failed' }, { id: 'c', status: 'killed' }], 400)
+  expect(after.tasks.map(x => [x.status, x.endedAt])).toEqual([['completed', 400], ['failed', 400], ['killed', 400]])
 })
 
 test('syncAgents marks an agent the list no longer has as killed', async () => {
-  const after = syncAgents({ tasks: [ag('a')], selected: 0 }, [])
-  expect(after.tasks[0]).toEqual({ ...ag('a'), status: 'killed', viewed: false })
+  expect(syncAgents(b(ag('a')), [], 50).tasks[0]).toEqual({ ...ag('a'), status: 'killed', endedAt: 50 })
 })
 
 test('syncAgents leaves pending, running, waiting and idle agents, shells and finished agents alone', async () => {
-  const b: Board = { tasks: [ag('a'), ag('b'), ag('c'), ag('p'), t('s'), ag('d', { status: 'failed', viewed: true })], selected: 0 }
+  const x = b(ag('a'), ag('b'), ag('c'), ag('p'), t('s'), ag('d', { status: 'failed', endedAt: 1 }))
   const infos = [
     { id: 'a', status: 'running' },
     { id: 'b', status: 'waiting' },
@@ -92,11 +54,10 @@ test('syncAgents leaves pending, running, waiting and idle agents, shells and fi
     { id: 'p', status: 'pending' },
     { id: 'd', status: 'completed' },
   ]
-  expect(syncAgents(b, infos)).toBe(b)
+  expect(syncAgents(x, infos, 9)).toBe(x)
 })
 
 test('unseenAgents keeps live subagents the board lacks and skips teammates and finished ones', async () => {
-  const b: Board = { tasks: [ag('known')], selected: 0 }
   const infos = [
     { id: 'known', status: 'running', type: 'Explore' },
     { id: 'new', status: 'running', type: 'general-purpose' },
@@ -105,5 +66,28 @@ test('unseenAgents keeps live subagents the board lacks and skips teammates and 
     { id: 'mate', status: 'running', type: 'teammate' },
     { id: 'named', status: 'idle', type: 'Explore', teammateId: 'bob@crew' },
   ]
-  expect(unseenAgents(b, infos).map(i => i.id)).toEqual(['new', 'wait'])
+  expect(unseenAgents(b(ag('known')), infos).map(i => i.id)).toEqual(['new', 'wait'])
+})
+
+test('pick prefers the newest running task, the later one on a tie', async () => {
+  expect(pick(b(t('a', { startedAt: 5 }), t('c', { startedAt: 9 }), t('d', { startedAt: 7 })), '')?.id).toBe('c')
+  expect(pick(b(t('a', { startedAt: 5 }), t('c', { startedAt: 5 })), '')?.id).toBe('c')
+})
+
+test('pick prefers a running task over a newer finished one, then the last finished', async () => {
+  expect(pick(b(t('a', { startedAt: 1 }), t('c', { startedAt: 9, status: 'completed', endedAt: 10 })), '')?.id).toBe('a')
+  expect(pick(b(t('a', { status: 'failed', endedAt: 20 }), t('c', { startedAt: 9, status: 'completed', endedAt: 10 })), '')?.id).toBe('a')
+  expect(pick(b(), '')).toBeUndefined()
+})
+
+test('pick gives the agent in view priority, known or not', async () => {
+  expect(pick(b(ag('x', { startedAt: 1, status: 'completed', endedAt: 2 }), t('s', { startedAt: 9 })), 'x')?.id).toBe('x')
+  expect(pick(b(t('s')), 'ghost')).toEqual({ id: 'ghost', kind: 'agent', command: 'agent', label: 'agent', startedAt: 0 })
+})
+
+test('sweep drops a finished task once its grace has passed, never a running one or the one in view', async () => {
+  const x = b(t('run'), t('old', { status: 'completed', endedAt: 0 }), t('new', { status: 'failed', endedAt: 5000 }), ag('v', { status: 'killed', endedAt: 0 }))
+  expect(sweep(x, 10000, 'v', 10000).tasks.map(y => y.id)).toEqual(['run', 'new', 'v'])
+  expect(sweep(x, 15000, '', 10000).tasks.map(y => y.id)).toEqual(['run'])
+  expect(sweep(x, 9999, 'v', 10000)).toBe(x)
 })
