@@ -1,7 +1,7 @@
 ---
 branch: worktree-switcher
 spec: docs/sdd/specs/2026-10-23-follow-view.md
-plan: -
+plan: docs/sdd/plans/2026-10-23-follow-view.md
 status: in-progress
 started: 2026-10-23
 ---
@@ -11,7 +11,7 @@ started: 2026-10-23
 Готово, коли перемикання агента внизу перемикає вміст панелі, а специфікацію узгоджено й реалізовано.
 
 ## Now
-Специфікацію написано (docs/sdd/specs/2026-10-23-follow-view.md), draft PR відкрито. Без вкладок: автослідування найновішої працюючої задачі, агент з `e.props.view` має пріоритет, `sweep` через 10 с, панель закривається сама. Основне вікно утримати на main неможливо — прийнято. Далі: правки користувача до специфікації, потім leonard (план).
+Специфікацію написано (docs/sdd/specs/2026-10-23-follow-view.md), draft PR відкрито. Без вкладок: автослідування найновішої працюючої задачі, агент з `e.props.view` має пріоритет, `sweep` через 10 с, панель закривається сама. Основне вікно утримати на main неможливо — прийнято. План затверджено (docs/sdd/plans/2026-10-23-follow-view.md): хвилі 0 → (1, 2, 4) → 3. Далі: wolowitz, хвиля 0 (acceptance tests у hooks/pane.test.tsx), перевірка `claude plugin test .`.
 
 ## Timeline
 
@@ -29,3 +29,4 @@ started: 2026-10-23
 - 12:17 ● cf6f307 Merge pull request #5 from dmytro-rudenko/fix/adopt-running-subagents
 - 12:46 ✎ Перевірено в бандлі 2.1.309: перемикання у списку задач внизу не проходить через хук ui.view; $.ui.view({}) з рендера відхиляється як not person-initiated
 - 12:56 ✎ Специфікація follow-view: без вкладок, pick(board, view) + sweep(endedAt), процеси вручну не вибираються
+- 12:56 ● c990608 docs(spec): console-log pane follows the newest task and the agent opened below
