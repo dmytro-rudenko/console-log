@@ -132,7 +132,7 @@ async function poll($: EngineInterface) {
   timer = undefined
   await update($, lines, () => [])
   await $.ui.close({ id: PANE })
-  if ((await board($)).tasks.length > 0) {
+  if ((await board($)).tasks.length > 0 || viewing) {
     tick($)
     await openPane($)
     await refresh($)
@@ -191,8 +191,10 @@ async function track(
   const startedAt = await $.clock.now()
   const deadline = timeoutMs === undefined ? undefined : startedAt + timeoutMs
   await mutate($, b => addTask(b, { ...seed, startedAt, deadline }))
-  await update($, lines, () => [])
-  await update($, readFailed, () => false)
+  if (!viewing) {
+    await update($, lines, () => [])
+    await update($, readFailed, () => false)
+  }
   tick($)
   const path = seed.kind === 'agent' ? undefined : (known ?? (await findOutput($, seed.id).catch(() => undefined)))
   if (path) await mutate($, b => ({ tasks: b.tasks.map(x => (x.id === seed.id ? { ...x, path } : x)) }))
@@ -302,6 +304,7 @@ export const register: Register = on => {
   on('ui.scroll', { component: 'Pane', requestId: PANE }, async () => ({})).catch(() => ({}))
 
   on('ui.close', { id: PANE }, async ($, e, next) => {
+    viewing = ''
     if (e.origin.kind === 'person') await update($, dismissed, () => true)
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -316,16 +319,17 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
-    const seen = e.props.view.agentId ?? ''
-    if (seen !== viewing) {
+    const seen = e.surface === 'terminal' ? (e.props.view.agentId ?? '') : viewing
+    const switched = seen !== viewing
+    if (switched) {
       viewing = seen
       // the engine refuses state writes while ui.render draws
-      $.clock.after(0, () => void follow($).catch(() => undefined))
+      $.clock.after(0, () => void follow($).catch(err => $.ui.log(`console-log: follow failed: ${String(err)}`, { to: 'debug' })))
     }
     const list = await read($, tasks)
     const task = pick({ tasks: list }, seen)
-    const body = await read($, lines)
-    const missing = await read($, pathMissing)
+    const body = switched ? [] : await read($, lines)
+    const missing = switched ? false : await read($, pathMissing)
     const failed = await read($, readFailed)
     const now = await $.clock.now()
     const W = Math.max(30, e.props.bodyColumns)
@@ -378,8 +382,8 @@ export const register: Register = on => {
 
     const isAgent = task.kind === 'agent'
     const running = list.filter(x => !x.status).length
-    const right = `${statusText(task)}${failed ? (isAgent ? ' · transcript unavailable' : ' · file unavailable') : ''} · ${running} running`
     const known = list.some(x => x.id === task.id)
+    const right = `${known ? statusText(task) : ''}${failed ? (isAgent ? ' · transcript unavailable' : ' · file unavailable') : ''} · ${running} running`.replace(/^ · /, '')
     const tail = `${known ? `   ${age(task.startedAt, now)}` : ''}${seen ? ' · in view' : ''}`
     const m = mark(task)
     const room = R - 3

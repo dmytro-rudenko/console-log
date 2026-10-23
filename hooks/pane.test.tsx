@@ -54,7 +54,7 @@ test('an empty pane says so', async ($, on) => {
   await ui.unmount()
 })
 
-test('a subagent background call does not become a tab', async ($, on) => {
+test('a subagent background call does not show in the pane', async ($, on) => {
   mock.env(on, { HOME: '/home/nobody' })
   mock.clock(on)
   on('command.register', () => ({ value: { command: 'console-log' } }))
@@ -101,7 +101,7 @@ test('a monitor past its deadline shows as expired', async ($, on) => {
   await ui.unmount()
 })
 
-test('a task whose output path cannot be resolved still becomes a tab', async ($, on) => {
+test('a task whose output path cannot be resolved still shows in the pane', async ($, on) => {
   mock.env(on, { HOME: '/home/nobody' })
   const clock = mock.clock(on)
   on('command.register', () => ({ value: { command: 'console-log' } }))
@@ -121,7 +121,7 @@ test('a task whose output path cannot be resolved still becomes a tab', async ($
   await ui.unmount()
 })
 
-test('two tasks failing together both keep their status', async ($, on) => {
+test('two tasks failing together both end', async ($, on) => {
   mock.env(on, { HOME: '/home/nobody' })
   const clock = mock.clock(on)
   let n = 0
@@ -151,7 +151,7 @@ test('two tasks failing together both keep their status', async ($, on) => {
   await ui.unmount()
 })
 
-test('a shell the person backgrounds from bash mode becomes a tab', async ($, on) => {
+test('a shell the person backgrounds from bash mode shows in the pane', async ($, on) => {
   mock.env(on, { HOME: '/home/nobody' })
   mock.clock(on)
   on('command.register', () => ({ value: { command: 'console-log' } }))
@@ -219,7 +219,7 @@ test('a task stopped with TaskStop leaves the pane and the pane closes', async (
   expect(closed).toContain('console-log')
 })
 
-const agentSetup = (on: On, list: () => { id: string; status: AgentStatus }[], messages: () => SessionMessage[] | { deny: string }) => {
+const agentSetup = (on: On, list: () => { id: string; status: AgentStatus }[], messages: () => SessionMessage[] | { deny: string }, tail = '') => {
   mock.env(on, { HOME: '/home/nobody' })
   on('command.register', () => ({ value: { command: 'console-log' } }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
@@ -229,6 +229,7 @@ const agentSetup = (on: On, list: () => { id: string; status: AgentStatus }[], m
   const runs: (readonly string[])[] = []
   on('process.run', (_, e) => {
     runs.push(e.argv)
+    if (tail) return ok(e.argv[0] === 'tail' ? tail : '/tmp/out.output\n')
     return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   on('agent.spawn', () => ({ model: 'claude-haiku-5-5', agentId: 'ag1' }))
@@ -254,7 +255,7 @@ const TRANSCRIPT_FIXTURE: SessionMessage[] = [
   },
 ]
 
-test('a subagent becomes a tab with its transcript', async ($, on) => {
+test('a subagent shows in the pane with its transcript', async ($, on) => {
   const clock = mock.clock(on)
   const runs = agentSetup(on, () => [{ id: 'ag1', status: 'running' }], () => TRANSCRIPT_FIXTURE)
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
@@ -321,7 +322,7 @@ test('an unreadable transcript says so', async ($, on) => {
   await ui.unmount()
 })
 
-test('a finished subagent resumed within 10 seconds keeps its tab', async ($, on) => {
+test('a finished subagent resumed within 10 seconds stays in the pane', async ($, on) => {
   const clock = mock.clock(on)
   let status: AgentStatus = 'running'
   const closed: string[] = []
@@ -348,7 +349,7 @@ test('a finished subagent resumed within 10 seconds keeps its tab', async ($, on
   expect(closed).toEqual([])
 })
 
-test('a workflow agent does not become a tab', async ($, on) => {
+test('a workflow agent does not show in the pane', async ($, on) => {
   const clock = mock.clock(on)
   agentSetup(on, () => [], () => ({ deny: 'no such agent: ag1' }))
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
@@ -360,7 +361,7 @@ test('a workflow agent does not become a tab', async ($, on) => {
   await ui.unmount()
 })
 
-test('a subagent already running when the mod loads becomes a tab', async ($, on) => {
+test('a subagent already running when the mod loads shows in the pane', async ($, on) => {
   const clock = mock.clock(on)
   agentSetup(on, () => [{ id: 'ag1', status: 'running' }], () => TRANSCRIPT_FIXTURE)
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
@@ -535,5 +536,58 @@ test('an agent the pane never tracked still shows its transcript when opened bel
   expect(await ui.find({ type: 'Text', text: /in view/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /▸ Find the refresh token/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /No background tasks yet\./ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('an agent the pane never tracked shows no status of its own', async ($, on) => {
+  const clock = mock.clock(on)
+  agentSetup(on, () => [], () => TRANSCRIPT_FIXTURE)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await clock.settle()
+
+  let ui = await $.ui.mount(viewing('ag1'))
+  await ui.unmount()
+  await clock.settle()
+  ui = await $.ui.mount(viewing('ag1'))
+  expect(await ui.find({ type: 'Text', text: /0 running/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /running · 0 running/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a render on another surface does not change the agent in view', async ($, on) => {
+  const clock = mock.clock(on)
+  const closed: string[] = []
+  agentSetup(on, () => [], () => TRANSCRIPT_FIXTURE)
+  on('ui.close', (_, e) => {
+    closed.push(e.id)
+    return { value: undefined }
+  })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await clock.settle()
+
+  const ui = await $.ui.mount(viewing('ag1'))
+  await ui.unmount()
+  await clock.settle()
+  const desktop = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await desktop.unmount()
+  await clock.settle()
+  await clock.advance(2000)
+  expect(closed).toEqual([])
+})
+
+test('switching the view does not show the old body under the new head', async ($, on) => {
+  const clock = mock.clock(on)
+  agentSetup(on, () => [], () => TRANSCRIPT_FIXTURE, 'from nap\n')
+  on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 'b7' } }))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'sleep 60', description: 'nap', run_in_background: true })
+  await clock.settle()
+
+  let ui = await $.ui.mount(viewing())
+  expect(await ui.find({ type: 'Text', text: /from nap/ })).toBeDefined()
+  await ui.unmount()
+  ui = await $.ui.mount(viewing('ag1'))
+  expect(await ui.find({ type: 'Text', text: /TRANSCRIPT/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /from nap/ })).toBeUndefined()
   await ui.unmount()
 })

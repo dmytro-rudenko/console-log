@@ -11,7 +11,7 @@ test('frame lines are exactly the pane width', async () => {
       const p = topParts(title, right, width)
       expect(`╭─ ${title}${p.fill}${p.right}─╮`.length).toBe(width)
     }
-    for (const hint of ['ctrl+→ focus', '', 'x'.repeat(300)]) {
+    for (const hint of ['pnpm test', '', 'x'.repeat(300)]) {
       const p = bottomParts(hint, width)
       expect(`╰─${p.hint}${p.fill}`.length).toBe(width)
     }
