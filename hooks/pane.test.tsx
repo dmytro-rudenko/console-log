@@ -15,7 +15,7 @@ const PANE = {
   },
 } as const
 
-test('a background Bash call becomes a tab with its live output', async ($, on) => {
+test('a background Bash call shows its live output', async ($, on) => {
   mock.env(on, { HOME: '/home/nobody' })
   mock.clock(on)
   on('command.register', () => ({ value: { command: 'console-log' } }))
@@ -34,11 +34,10 @@ test('a background Bash call becomes a tab with its live output', async ($, on) 
   await $.tool.call({ tool: 'Bash', command: 'pnpm exec jest', description: 'jest db tests', run_in_background: true })
 
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  const top = await ui.find({ type: 'Text', text: /BACKGROUND/ })
+  const top = await ui.find({ type: 'Text', text: /OUTPUT/ })
   expect(top?.text.length).toBe(100)
   expect((await ui.find({ type: 'Text', text: /jest db tests/ }))?.text).toContain('jest db tests')
   expect((await ui.find({ type: 'Text', text: /line 2/ }))?.text).not.toContain('\x1b')
-  expect(await ui.find({ type: 'Text', text: /ctrl\+x tab focus/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -147,7 +146,8 @@ test('two tasks failing together both keep their status', async ($, on) => {
   await clock.settle()
 
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect((await ui.findAll({ type: 'Text', text: /^✗/ })).length).toBe(2)
+  expect(await ui.find({ type: 'Text', text: /^✗/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /0 running/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -178,7 +178,7 @@ test('a shell the person backgrounds from bash mode becomes a tab', async ($, on
   })
 
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(await ui.find({ type: 'Text', text: /1 task/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /1 running/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /freed 9G/ })).toBeDefined()
   expect(runs.some(a => a[0] === 'tail' && a.at(-1) === path)).toBe(true)
   expect(runs.some(a => a[0] === 'sh')).toBe(false)
@@ -478,7 +478,11 @@ test('an agent opened below takes the pane until the view goes back to main', as
     closed.push(e.id)
     return { value: undefined }
   })
-  on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 'b7' } }))
+  on('tool.call', (_, e) =>
+    e.tool === 'TaskStop'
+      ? { result: { message: 'stopped', task_id: 'b7', task_type: 'local_bash' } }
+      : { result: { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 'b7' } },
+  )
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
   await $.agent.spawn({ ...SPAWN, prompt: 'Find the refresh token', description: 'explore auth', subagentType: 'Explore' })
   await clock.settle()
@@ -512,6 +516,10 @@ test('an agent opened below takes the pane until the view goes back to main', as
   expect(await ui.find({ type: 'Text', text: /OUTPUT/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /Explore·explore auth/ })).toBeUndefined()
   await ui.unmount()
+  await $.tool.call({ tool: 'TaskStop', task_id: 'b7' })
+  await clock.settle()
+  await clock.advance(11000)
+  expect(closed).toContain('console-log')
 })
 
 test('an agent the pane never tracked still shows its transcript when opened below', async ($, on) => {

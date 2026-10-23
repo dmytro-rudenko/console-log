@@ -2,10 +2,10 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import type { Board, ConsoleTask, OutLine } from '../types'
-import { age, bottomParts, fit, mark, paneHint, statusText, tabLabel, tabWidth, tabWindow, topParts } from './layout'
+import { age, bottomParts, fit, headLine, mark, statusText, taskLabel, topParts } from './layout'
 import { parseBashInput, parseTaskNotification, parseUserBackground } from './notification'
 import { sanitize } from './sanitize'
-import { addTask, applyNotification, dropTask, expireTasks, hasRunning, selectTask, syncAgents, unseenAgents } from './tasks'
+import { addTask, applyNotification, expireTasks, pick, sweep, syncAgents, unseenAgents } from './tasks'
 import { agentLines } from './transcript'
 
 const PANE = 'console-log'
@@ -22,33 +22,27 @@ const MONITOR_MAX_MS = 1800000
 const EXPIRE_GRACE_MS = 5000
 
 const tasks = atom({ plugin: 'console-log', key: 'tasks' } as const, [] as ConsoleTask[])
-const selected = atom({ plugin: 'console-log', key: 'selected' } as const, -1)
 const lines = atom({ plugin: 'console-log', key: 'lines' } as const, [] as OutLine[], { shape: 'out-lines' })
 const pathMissing = atom({ plugin: 'console-log', key: 'pathMissing' } as const, false)
 const readFailed = atom({ plugin: 'console-log', key: 'readFailed' } as const, false)
 const dismissed = atom({ plugin: 'console-log', key: 'dismissed' } as const, false)
-const hasCtrlArrows = atom({ plugin: 'console-log', key: 'hasCtrlArrows' } as const, false)
 
 let timer: Timer | undefined
 let busy = false
 let pending = false
 let chain: Promise<unknown> = Promise.resolve()
 let lastBashInput: string | undefined
+let viewing = ''
 
 async function board($: EngineInterface): Promise<Board> {
-  return { tasks: await read($, tasks), selected: await read($, selected) }
-}
-
-async function save($: EngineInterface, b: Board) {
-  await update($, tasks, () => b.tasks)
-  await update($, selected, () => b.selected)
+  return { tasks: await read($, tasks) }
 }
 
 function mutate($: EngineInterface, fn: (b: Board) => Board): Promise<Board> {
   const run = chain.then(async () => {
     const before = await board($)
     const after = fn(before)
-    if (after !== before) await save($, after)
+    if (after !== before) await update($, tasks, () => after.tasks)
     return after
   })
   chain = run.catch(() => undefined)
@@ -56,7 +50,7 @@ function mutate($: EngineInterface, fn: (b: Board) => Board): Promise<Board> {
 }
 
 async function load($: EngineInterface) {
-  const task = (await read($, tasks))[await read($, selected)]
+  const task = pick(await board($), viewing)
   if (task?.kind === 'agent') {
     await update($, pathMissing, () => false)
     try {
@@ -121,31 +115,34 @@ async function syncAgentStatus($: EngineInterface) {
   } catch {
     return
   }
-  let done: string[] = []
-  await mutate($, b => {
-    const after = syncAgents(b, infos)
-    done = after.tasks.filter((x, i) => x.status === 'completed' && !b.tasks[i]?.status).map(x => x.id)
-    return after
-  })
-  for (const id of done) $.clock.after(DROP_COMPLETED_MS, () => void dropIfStill($, id, 'completed').catch(() => undefined))
-}
-
-async function dropIfStill($: EngineInterface, id: string, status: string) {
-  if ((await read($, tasks)).find(x => x.id === id)?.status !== status) return
-  await drop($, id)
+  const now = await $.clock.now()
+  await mutate($, b => syncAgents(b, infos, now))
 }
 
 async function poll($: EngineInterface) {
   await syncAgentStatus($)
   const now = await $.clock.now()
-  const b = await mutate($, x => expireTasks(x, now, EXPIRE_GRACE_MS))
-  if (!hasRunning(b)) {
+  const v = viewing
+  const b = await mutate($, x => sweep(expireTasks(x, now, EXPIRE_GRACE_MS), now, v, DROP_COMPLETED_MS))
+  if (b.tasks.length > 0 || v) {
     await refresh($)
-    timer?.cancel()
-    timer = undefined
-    if (hasRunning(await board($))) tick($)
     return
   }
+  timer?.cancel()
+  timer = undefined
+  await update($, lines, () => [])
+  await $.ui.close({ id: PANE })
+  if ((await board($)).tasks.length > 0) {
+    tick($)
+    await openPane($)
+    await refresh($)
+  }
+}
+
+async function follow($: EngineInterface) {
+  await update($, lines, () => [])
+  await update($, readFailed, () => false)
+  tick($)
   await refresh($)
 }
 
@@ -159,35 +156,11 @@ async function openPane($: EngineInterface) {
   await $.ui.open({ id: PANE, title: TITLE, columns: COLUMNS })
 }
 
-async function leave($: EngineInterface) {
-  await $.ui.close({ id: PANE })
-  await $.ui.open({ id: PANE, title: TITLE, columns: COLUMNS })
-}
-
-async function drop($: EngineInterface, id: string): Promise<Board> {
-  const b = await mutate($, x => dropTask(x, id))
-  if (b.tasks.length === 0) {
-    await update($, lines, () => [])
-    await $.ui.close({ id: PANE })
-    return b
-  }
-  await refresh($)
-  return b
-}
-
 // TaskStop ends a task without a <task-notification>, so this is the only signal that it is gone
 async function stop($: EngineInterface, id: string) {
-  const b = await mutate($, x => applyNotification(x, { id, status: 'killed' }))
-  if (!b.tasks.some(x => x.id === id)) return
-  await refresh($)
-  $.clock.after(DROP_COMPLETED_MS, () => void dropIfStill($, id, 'killed').catch(() => undefined))
-}
-
-async function exit($: EngineInterface) {
-  const b = await board($)
-  const task = b.tasks[b.selected]
-  if (task?.viewed && (await drop($, task.id)).tasks.length === 0) return
-  await leave($)
+  const now = await $.clock.now()
+  const b = await mutate($, x => applyNotification(x, { id, status: 'killed' }, now))
+  if (b.tasks.some(x => x.id === id)) await refresh($)
 }
 
 function clean(raw: string): string {
@@ -222,7 +195,7 @@ async function track(
   await update($, readFailed, () => false)
   tick($)
   const path = seed.kind === 'agent' ? undefined : (known ?? (await findOutput($, seed.id).catch(() => undefined)))
-  if (path) await mutate($, b => ({ ...b, tasks: b.tasks.map(x => (x.id === seed.id ? { ...x, path } : x)) }))
+  if (path) await mutate($, b => ({ tasks: b.tasks.map(x => (x.id === seed.id ? { ...x, path } : x)) }))
   await refresh($)
   await openPane($)
 }
@@ -231,19 +204,6 @@ function monitorTimeout(result: number | undefined, input: number | undefined, p
   if (persistent || result === 0) return undefined
   if (result !== undefined && result > 0) return result
   return Math.min(input && input > 0 ? input : MONITOR_DEFAULT_MS, MONITOR_MAX_MS)
-}
-
-async function readCtrlArrows($: EngineInterface): Promise<boolean> {
-  try {
-    const home = await $.env.get('HOME')
-    if (!home) return false
-    const raw = JSON.parse(String(await $.fs.read(`${home}/.claude/keybindings.json`))) as {
-      bindings?: { context?: string; bindings?: Record<string, unknown> }[]
-    }
-    return (raw.bindings ?? []).some(b => b.context === 'Chat' && b.bindings?.['ctrl+right'] === 'abovePrompt:focus')
-  } catch {
-    return false
-  }
 }
 
 async function spawned($: EngineInterface, e: { subagentType: string; description: string }, id: string) {
@@ -268,10 +228,7 @@ const TONE: Record<OutLine['tone'], { color?: string; dim?: boolean }> = {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'console-log', description: 'Open the background output pane' })
-    const b = await mutate($, x => x.tasks.reduce((acc, t) => (t.status === 'completed' ? dropTask(acc, t.id) : acc), x))
-    const bound = await readCtrlArrows($)
-    await update($, hasCtrlArrows, () => bound)
-    if (hasRunning(b)) tick($)
+    if ((await board($)).tasks.length > 0) tick($)
     const r = await next(e)
     void adoptAgents($).catch(() => undefined)
     return r
@@ -333,34 +290,11 @@ export const register: Register = on => {
   on('prompt.submit', async ($, e, next) => {
     if (e.origin.kind === 'task-notification') {
       const n = parseTaskNotification(e.text)
-      const b = n ? await mutate($, x => applyNotification(x, n)) : undefined
-      if (n && b?.tasks.some(x => x.id === n.id)) {
-        await refresh($)
-        if (n.status === 'completed') $.clock.after(DROP_COMPLETED_MS, () => void dropIfStill($, n.id, 'completed').catch(() => undefined))
+      if (n) {
+        const now = await $.clock.now()
+        const b = await mutate($, x => applyNotification(x, n, now))
+        if (b.tasks.some(x => x.id === n.id)) await refresh($)
       }
-    }
-    return next(e)
-  }).catch(($, e, next) => next(e))
-
-  on('ui.focus', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
-    const b = await board($)
-    if (e.element === 'exit') {
-      if (e.origin.kind !== 'person') return next(e)
-      // ui.focus carries no direction; with one task both ctrl+arrows land on exit, so leaving is the only way out
-      if (b.tasks.length > 1 && b.selected === b.tasks.length - 1) return {}
-      void exit($).catch(() => undefined)
-      return {}
-    }
-    const id = e.element?.startsWith('tab-') ? e.element.slice(4) : undefined
-    const i = id ? b.tasks.findIndex(x => x.id === id) : -1
-    if (i >= 0 && i !== b.selected) {
-      await update($, lines, () => [])
-      await update($, readFailed, () => false)
-      await mutate($, x => {
-        const j = x.tasks.findIndex(t => t.id === id)
-        return j >= 0 ? selectTask(x, j) : x
-      })
-      void refresh($).catch(() => undefined)
     }
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -381,14 +315,18 @@ export const register: Register = on => {
   }).catch(() => ({ text: 'console-log: could not open the pane.' }))
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button } = $.ui.resolve(e)
+    const { Box, Text } = $.ui.resolve(e)
+    const seen = e.props.view.agentId ?? ''
+    if (seen !== viewing) {
+      viewing = seen
+      // the engine refuses state writes while ui.render draws
+      $.clock.after(0, () => void follow($).catch(() => undefined))
+    }
     const list = await read($, tasks)
-    const at = await read($, selected)
-    const task = list[at]
+    const task = pick({ tasks: list }, seen)
     const body = await read($, lines)
     const missing = await read($, pathMissing)
     const failed = await read($, readFailed)
-    const bound = await read($, hasCtrlArrows)
     const now = await $.clock.now()
     const W = Math.max(30, e.props.bodyColumns)
     const R = Math.max(8, e.props.scroll.bodyRows)
@@ -424,48 +362,41 @@ export const register: Register = on => {
       </Text>
     )
 
-    const win = tabWindow(list.map(x => tabWidth(x, now)), at, inner - 7)
-    const shown = list.slice(win.lo, win.hi + 1)
-    const tabs = (
-      <Box flexDirection="row" width={inner} overflow="hidden">
-        <Button key="exit" plain label=" " onPress={() => undefined} />
-        {win.lo > 0 && <Text dimColor>{`‹${win.lo} `}</Text>}
-        {shown.map((x, j) => {
-          const i = win.lo + j
-          const m = mark(x)
-          const isOn = i === at
-          return (
-            <Button key={`tab-${x.id}`} plain autoFocus={i === 0 ? true : undefined} onPress={() => undefined}>
-              <Text color={m.color}>{m.glyph} </Text>
-              <Text color={isOn ? 'cyan' : undefined} bold={isOn} underline={isOn} dimColor={!isOn}>
-                {tabLabel(x)}
-              </Text>
-              <Text dimColor>{` ${age(x.startedAt, now)}   `}</Text>
-            </Button>
-          )
-        })}
-        {win.hi < list.length - 1 && <Text dimColor>{`${list.length - 1 - win.hi}›`}</Text>}
-      </Box>
-    )
+    if (!task) {
+      return (
+        <Box flexDirection="column" width={W} height={R} backgroundColor="black">
+          {top('OUTPUT', '')}
+          <Box flexDirection="row">
+            <Text color="gray">│ </Text>
+            <Box width={inner}><Text dimColor>No background tasks yet.</Text></Box>
+            <Text color="gray"> │</Text>
+          </Box>
+          {bottom('')}
+        </Box>
+      )
+    }
 
-    const room = R - 5
+    const isAgent = task.kind === 'agent'
+    const running = list.filter(x => !x.status).length
+    const right = `${statusText(task)}${failed ? (isAgent ? ' · transcript unavailable' : ' · file unavailable') : ''} · ${running} running`
+    const known = list.some(x => x.id === task.id)
+    const tail = `${known ? `   ${age(task.startedAt, now)}` : ''}${seen ? ' · in view' : ''}`
+    const m = mark(task)
+    const room = R - 3
     const out: OutLine[] = missing ? [{ text: 'output file not found', tone: 'muted' }] : body.slice(-room)
-    while (task && out.length < room) out.push({ text: '', tone: 'text' })
-    const isAgent = task?.kind === 'agent'
-    const right = task ? `${statusText(task)}${failed ? (isAgent ? ' · transcript unavailable' : ' · file unavailable') : ''}` : ''
+    while (out.length < room) out.push({ text: '', tone: 'text' })
 
     return (
       <Box flexDirection="column" width={W} height={R} backgroundColor="black">
-        {top('BACKGROUND', `${list.length} ${list.length === 1 ? 'task' : 'tasks'}`)}
-        <Box flexDirection="row">
+        {top(isAgent ? 'TRANSCRIPT' : 'OUTPUT', right)}
+        <Text wrap="truncate">
           <Text color="gray">│ </Text>
-          {list.length ? tabs : <Box width={inner}><Text dimColor>No background tasks yet.</Text></Box>}
+          <Text color={m.color}>{m.glyph} </Text>
+          <Text color="cyan" bold>{headLine(taskLabel(task), tail, inner - 2)}</Text>
           <Text color="gray"> │</Text>
-        </Box>
-        {bottom(paneHint(e.props.isFocused, bound))}
-        {task && top(isAgent ? 'TRANSCRIPT' : 'OUTPUT', right)}
-        {task && out.map((l, i) => row(l, `o${i}`))}
-        {task && bottom(task.command)}
+        </Text>
+        {out.map((l, i) => row(l, `o${i}`))}
+        {bottom(task.command)}
       </Box>
     )
   })
