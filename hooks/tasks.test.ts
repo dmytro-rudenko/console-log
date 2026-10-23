@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Board, ConsoleTask } from '../types'
-import { addTask, applyNotification, expireTasks, hasRunning, MAX_TASKS, pick, sweep, syncAgents, unseenAgents } from './tasks'
+import { addTask, applyNotification, expireTasks, MAX_TASKS, pick, sweep, syncAgents, unseenAgents } from './tasks'
 
 const t = (id: string, extra: Partial<ConsoleTask> = {}): ConsoleTask => ({ id, kind: 'shell', command: id, startedAt: 0, ...extra })
 const ag = (id: string, extra: Partial<ConsoleTask> = {}): ConsoleTask => t(id, { kind: 'agent', ...extra })
@@ -29,11 +29,6 @@ test('expireTasks marks running tasks past deadline plus grace as expired and st
   const next = expireTasks(x, 7000, 5000)
   expect(next.tasks.map(y => [y.status, y.endedAt])).toEqual([['expired', 7000], [undefined, undefined], [undefined, undefined], ['failed', 3]])
   expect(expireTasks(x, 6000, 5000)).toBe(x)
-})
-
-test('hasRunning is true while any task has no status', async () => {
-  expect(hasRunning(b(t('a', { status: 'completed' }), t('b')))).toBe(true)
-  expect(hasRunning(b(t('a', { status: 'failed' })))).toBe(false)
 })
 
 test('syncAgents gives an agent its final status and endedAt from the list', async () => {
@@ -90,4 +85,9 @@ test('sweep drops a finished task once its grace has passed, never a running one
   expect(sweep(x, 10000, 'v', 10000).tasks.map(y => y.id)).toEqual(['run', 'new', 'v'])
   expect(sweep(x, 15000, '', 10000).tasks.map(y => y.id)).toEqual(['run'])
   expect(sweep(x, 9999, 'v', 10000)).toBe(x)
+})
+
+test('a finished task saved without endedAt counts as ended long ago', async () => {
+  expect(sweep(b(t('legacy', { status: 'failed' })), 1_700_000_000_000, '', 10000).tasks).toEqual([])
+  expect(pick(b(t('legacy', { status: 'failed' }), t('done', { status: 'completed', endedAt: 5 })), '')?.id).toBe('done')
 })

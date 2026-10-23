@@ -11,10 +11,6 @@ export function applyNotification(board: Board, n: TaskNotification, now: number
   return { tasks: board.tasks.map(x => (x.id === n.id ? { ...x, status: n.status, exitCode: n.exitCode, endedAt: x.endedAt ?? now } : x)) }
 }
 
-export function hasRunning(board: Board): boolean {
-  return board.tasks.some(x => !x.status)
-}
-
 export function expireTasks(board: Board, now: number, graceMs: number): Board {
   const late = (x: ConsoleTask) => !x.status && x.deadline !== undefined && x.deadline + graceMs < now
   if (!board.tasks.some(late)) return board

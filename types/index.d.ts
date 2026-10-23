@@ -21,7 +21,6 @@ declare module 'claude-code' {
   interface PluginState {
     'console-log': {
       tasks: ConsoleTask[]
-      view: string
       lines: Shaped<OutLine[]>
       pathMissing: boolean
       readFailed: boolean
