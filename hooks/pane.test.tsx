@@ -391,3 +391,141 @@ test('/console-log picks up a running subagent the pane never saw spawn', async 
   expect(await ui.find({ type: 'Text', text: /Explore·explore auth/ })).toBeDefined()
   await ui.unmount()
 })
+
+const twoJobs = (on: On) => {
+  mock.env(on, { HOME: '/home/nobody' })
+  const closed: string[] = []
+  let n = 0
+  on('command.register', () => ({ value: { command: 'console-log' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.close', (_, e) => {
+    closed.push(e.id)
+    return { value: undefined }
+  })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 'S1' }))
+  on('fs.read', () => { throw new Error('no file') })
+  on('prompt.submit', (_, e) => e)
+  on('process.run', (_, e) =>
+    e.argv[0] === 'tail' ? ok(e.argv.at(-1) === '/tmp/j1.output' ? 'from one\n' : 'from two\n') : ok(`/tmp/${e.argv.at(-1)}.output\n`),
+  )
+  on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false, backgroundTaskId: `j${++n}` } }))
+  return closed
+}
+
+const viewing = (agentId?: string) => ({ ...PANE, props: { ...PANE.props, view: agentId ? { agentId } : {} }, surface: 'terminal' as const })
+
+test('the pane shows the newest running task and has no tab row', async ($, on) => {
+  const clock = mock.clock(on)
+  twoJobs(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'one', description: 'job one', run_in_background: true })
+  await clock.settle()
+  await $.tool.call({ tool: 'Bash', command: 'two', description: 'job two', run_in_background: true })
+  await clock.settle()
+
+  const ui = await $.ui.mount(viewing())
+  expect(await ui.find({ type: 'Text', text: /from two/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /job two/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /2 running/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /from one/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /BACKGROUND/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /job one/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('when the newest task ends the pane follows the next running one', async ($, on) => {
+  const clock = mock.clock(on)
+  twoJobs(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'one', description: 'job one', run_in_background: true })
+  await clock.settle()
+  await $.tool.call({ tool: 'Bash', command: 'two', description: 'job two', run_in_background: true })
+  await clock.settle()
+  await $.prompt.submit({ text: note('j2', 'completed', 'Background command "two" completed (exit code 0)'), origin: { kind: 'task-notification' }, wait: false })
+  await clock.advance(1500)
+
+  const ui = await $.ui.mount(viewing())
+  expect(await ui.find({ type: 'Text', text: /from one/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /job one/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /1 running/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('when every task has ended the pane closes 10 seconds later, failures included', async ($, on) => {
+  const clock = mock.clock(on)
+  const closed = twoJobs(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'one', description: 'job one', run_in_background: true })
+  await $.tool.call({ tool: 'Bash', command: 'two', description: 'job two', run_in_background: true })
+  await clock.settle()
+  const origin = { kind: 'task-notification' } as const
+  await $.prompt.submit({ text: note('j1', 'failed', 'Background command "one" failed with exit code 1'), origin, wait: false })
+  await $.prompt.submit({ text: note('j2', 'failed', 'Background command "two" failed with exit code 2'), origin, wait: false })
+  await clock.settle()
+  await clock.advance(5000)
+  expect(closed).toEqual([])
+  await clock.advance(6000)
+  expect(closed).toContain('console-log')
+})
+
+test('an agent opened below takes the pane until the view goes back to main', async ($, on) => {
+  const clock = mock.clock(on)
+  let status: AgentStatus = 'running'
+  const closed: string[] = []
+  agentSetup(on, () => [{ id: 'ag1', status }], () => TRANSCRIPT_FIXTURE)
+  on('ui.close', (_, e) => {
+    closed.push(e.id)
+    return { value: undefined }
+  })
+  on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 'b7' } }))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.agent.spawn({ ...SPAWN, prompt: 'Find the refresh token', description: 'explore auth', subagentType: 'Explore' })
+  await clock.settle()
+  await $.tool.call({ tool: 'Bash', command: 'sleep 60', description: 'nap', run_in_background: true })
+  await clock.settle()
+
+  let ui = await $.ui.mount(viewing())
+  expect(await ui.find({ type: 'Text', text: /nap/ })).toBeDefined()
+  await ui.unmount()
+
+  ui = await $.ui.mount(viewing('ag1'))
+  expect(await ui.find({ type: 'Text', text: /TRANSCRIPT/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /in view/ })).toBeDefined()
+  await ui.unmount()
+  await clock.settle()
+
+  status = 'completed'
+  await clock.advance(12000)
+  expect(closed).toEqual([])
+  ui = await $.ui.mount(viewing('ag1'))
+  expect(await ui.find({ type: 'Text', text: /Explore·explore auth/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /▸ Find the refresh token/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /✓/ })).toBeDefined()
+  await ui.unmount()
+
+  ui = await $.ui.mount(viewing())
+  await ui.unmount()
+  await clock.advance(1500)
+  ui = await $.ui.mount(viewing())
+  expect(await ui.find({ type: 'Text', text: /nap/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /OUTPUT/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Explore·explore auth/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('an agent the pane never tracked still shows its transcript when opened below', async ($, on) => {
+  const clock = mock.clock(on)
+  agentSetup(on, () => [], () => TRANSCRIPT_FIXTURE)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await clock.settle()
+
+  let ui = await $.ui.mount(viewing('ag1'))
+  await ui.unmount()
+  await clock.settle()
+  ui = await $.ui.mount(viewing('ag1'))
+  expect(await ui.find({ type: 'Text', text: /in view/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /▸ Find the refresh token/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /No background tasks yet\./ })).toBeUndefined()
+  await ui.unmount()
+})
