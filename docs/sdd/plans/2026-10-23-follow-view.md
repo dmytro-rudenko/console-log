@@ -475,14 +475,14 @@ export function headLine(label: string, tail: string, width: number): string {
 - Produces: —
 **Satisfies:** усі п'ять тестів Task 0, а також наявні тести `pane.test.tsx`.
 
-- [ ] **Step 1: update the old tests that rely on tabs.** In `hooks/pane.test.tsx`, edit only these three tests:
+- [x] **Step 1: update the old tests that rely on tabs.** In `hooks/pane.test.tsx`, edit only these three tests:
   - `'a background Bash call becomes a tab with its live output'`: rename it to `'a background Bash call shows its live output'`. Replace `text: /BACKGROUND/` with `text: /OUTPUT/` (the `toBe(100)` length check on that line stays). Remove the line `expect(await ui.find({ type: 'Text', text: /ctrl\+x tab focus/ })).toBeDefined()`.
   - `'two tasks failing together both keep their status'`: replace `expect((await ui.findAll({ type: 'Text', text: /^✗/ })).length).toBe(2)` with two lines: `expect(await ui.find({ type: 'Text', text: /^✗/ })).toBeDefined()` and `expect(await ui.find({ type: 'Text', text: /0 running/ })).toBeDefined()`.
   - `'a shell the person backgrounds from bash mode becomes a tab'`: change `text: /1 task/` to `text: /1 running/`.
 
-- [ ] **Step 2: run them, watch them fail.** Run `claude plugin test hooks/pane.test.tsx`. Expect `(fail)`: either `register.tsx` does not compile (removed imports), or `OUTPUT`/`running`/`in view` are missing.
+- [x] **Step 2: run them, watch them fail.** Run `claude plugin test hooks/pane.test.tsx`. Expect `(fail)`: either `register.tsx` does not compile (removed imports), or `OUTPUT`/`running`/`in view` are missing.
 
-- [ ] **Step 3: implement.** Replace `hooks/register.tsx` with:
+- [x] **Step 3: implement.** Replace `hooks/register.tsx` with:
 
 ```tsx
 import { atom, read, update } from 'claude-code'
@@ -885,7 +885,7 @@ export const register: Register = on => {
 }
 ```
 
-- [ ] **Step 4: run it, watch it pass.** Run `claude plugin test .` and expect `0 fail`: all of Task 0's tests plus every older test. Then `npx -y -p typescript tsc -p . --noEmit` should give exit 0 with no output.
+- [x] **Step 4: run it, watch it pass.** Run `claude plugin test .` and expect `0 fail`: all of Task 0's tests plus every older test. Then `npx -y -p typescript tsc -p . --noEmit` should give exit 0 with no output.
 
 ---
 
