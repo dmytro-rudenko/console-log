@@ -38,7 +38,7 @@
 - «рендер із `view: {}` → автослідування й закриття»;
 - плюс §3.1 «невідомий агент → синтетичний агент».
 
-- [ ] **Step 1: write the acceptance tests.** Дописати в кінець `hooks/pane.test.tsx`. Файл уже визначає `PANE`, `ok`, `note`, `agentSetup`, `SPAWN`, `TRANSCRIPT_FIXTURE` та імпортує `expect, mock, test`, `AgentStatus`.
+- [x] **Step 1: write the acceptance tests.** Дописати в кінець `hooks/pane.test.tsx`. Файл уже визначає `PANE`, `ok`, `note`, `agentSetup`, `SPAWN`, `TRANSCRIPT_FIXTURE` та імпортує `expect, mock, test`, `AgentStatus`.
 
 ```tsx
 const twoJobs = (on: On) => {
@@ -180,7 +180,7 @@ test('an agent the pane never tracked still shows its transcript when opened bel
 })
 ```
 
-- [ ] **Step 2: run them, watch them fail.** `claude plugin test .`. Усі п'ять нових тестів мають бути `(fail)`, бо поведінки ще немає: є `BACKGROUND`, немає `2 running` і `in view`, панель не закривається на `✗`. Решта тестів `(pass)`.
+- [x] **Step 2: run them, watch them fail.** `claude plugin test .`. Усі п'ять нових тестів мають бути `(fail)`, бо поведінки ще немає: є `BACKGROUND`, немає `2 running` і `in view`, панель не закривається на `✗`. Решта тестів `(pass)`.
 
 ---
 
@@ -205,7 +205,7 @@ test('an agent the pane never tracked still shows its transcript when opened bel
   - Прибрано `selectTask`, `dropTask`, а також стан `selected` і `hasCtrlArrows`.
 - Consumes: —
 
-- [ ] **Step 1: write the failing test.** Повністю замінити `hooks/tasks.test.ts`:
+- [x] **Step 1: write the failing test.** Повністю замінити `hooks/tasks.test.ts`:
 
 ```ts
 import { expect, test } from 'claude-code/testing'
@@ -303,9 +303,9 @@ test('sweep drops a finished task once its grace has passed, never a running one
 })
 ```
 
-- [ ] **Step 2: run it, watch it fail.** `claude plugin test hooks/tasks.test.ts`. Очікувано: помилка імпорту, бо `pick`/`sweep` не експортовані.
+- [x] **Step 2: run it, watch it fail.** `claude plugin test hooks/tasks.test.ts`. Очікувано: помилка імпорту, бо `pick`/`sweep` не експортовані.
 
-- [ ] **Step 3: implement.** Повністю замінити `types/index.d.ts`:
+- [x] **Step 3: implement.** Повністю замінити `types/index.d.ts`:
 
 ```ts
 export type ConsoleTask = {
@@ -406,7 +406,7 @@ export function sweep(board: Board, now: number, view: string, graceMs: number):
 }
 ```
 
-- [ ] **Step 4: run it, watch it pass.** `claude plugin test hooks/tasks.test.ts`, очікувано `0 fail`.
+- [x] **Step 4: run it, watch it pass.** `claude plugin test hooks/tasks.test.ts`, очікувано `0 fail`.
 
 ---
 
@@ -421,7 +421,7 @@ export function sweep(board: Board, now: number, view: string, graceMs: number):
 - Прибрано: `LABEL_MAX`, `tabLabel`, `tabWidth`, `tabWindow`, `paneHint`. Без змін: `fit`, `topParts`, `bottomParts`, `age`, `mark`, `statusText`.
 - Consumes: —
 
-- [ ] **Step 1: write the failing test.** У `hooks/layout.test.ts`:
+- [x] **Step 1: write the failing test.** У `hooks/layout.test.ts`:
   - замінити рядок імпорту на `import { age, bottomParts, fit, headLine, mark, statusText, taskLabel, topParts } from './layout'`;
   - видалити тести `'tab label prefers the description and caps at 22 chars'`, `'tab window keeps the selected tab inside the budget'`, `'pane hint depends on focus and on the ctrl+arrow binding'`;
   - у `'frame lines are exactly the pane width'` замінити `['BACKGROUND', '3 tasks']` на `['TRANSCRIPT', 'running · 3 running']`;
@@ -444,9 +444,9 @@ test('head line is exactly the width and keeps the tail', async () => {
 })
 ```
 
-- [ ] **Step 2: run it, watch it fail.** `claude plugin test hooks/layout.test.ts`. Очікувано: помилка імпорту `headLine`/`taskLabel`.
+- [x] **Step 2: run it, watch it fail.** `claude plugin test hooks/layout.test.ts`. Очікувано: помилка імпорту `headLine`/`taskLabel`.
 
-- [ ] **Step 3: implement.** У `hooks/layout.ts`:
+- [x] **Step 3: implement.** У `hooks/layout.ts`:
   - видалити `LABEL_MAX`, `tabLabel`, `tabWidth`, `tabWindow`, `paneHint`;
   - дописати:
 
@@ -461,7 +461,7 @@ export function headLine(label: string, tail: string, width: number): string {
 }
 ```
 
-- [ ] **Step 4: run it, watch it pass.** `claude plugin test hooks/layout.test.ts`, очікувано `0 fail`.
+- [x] **Step 4: run it, watch it pass.** `claude plugin test hooks/layout.test.ts`, очікувано `0 fail`.
 
 ---
 
@@ -895,8 +895,8 @@ export const register: Register = on => {
 **Depends on:** Task 0
 **Interfaces:** none
 
-- [ ] **Step 1: version.** In `.claude-plugin/plugin.json`, change `"version": "0.2.1"` to `"version": "0.3.0"`.
-- [ ] **Step 2: English README.**
+- [x] **Step 1: version.** In `.claude-plugin/plugin.json`, change `"version": "0.2.1"` to `"version": "0.3.0"`.
+- [x] **Step 2: English README.**
   - Delete the whole `## Keys` section, from its heading up to `## Behaviour`.
   - In the opening paragraph, replace `Each subagent gets a tab too, with its transcript.` with `Subagents show there too, with their transcripts.`
   - Replace the `## Behaviour` list with:
@@ -923,7 +923,7 @@ export const register: Register = on => {
 - While the pane is closed it does not see what you open in the task list; `/console-log` opens it on the agent in view.
 ```
 
-- [ ] **Step 3: Ukrainian README.** Under `## Українською`:
+- [x] **Step 3: Ukrainian README.** Under `## Українською`:
   - delete the whole `### Клавіші` section;
   - in the opening paragraph, replace the sentence about subagent tabs with `Субагенти теж показуються там, зі своїми транскриптами.`;
   - replace the `### Поведінка` list with:
@@ -950,7 +950,7 @@ export const register: Register = on => {
 - Поки панель закрита, вона не бачить, що ви відкриваєте в списку задач; `/console-log` відкриває її на агенті, який зараз відкритий.
 ```
 
-- [ ] **Step 4: check.** Run `grep -n -E "ctrl\+→|abovePrompt|keybindings|tab" README.md`. Expect no line about the tab row or the keys (the word `table` does not appear in the file).
+- [x] **Step 4: check.** Run `grep -n -E "ctrl\+→|abovePrompt|keybindings|tab" README.md`. Expect no line about the tab row or the keys (the word `table` does not appear in the file).
 
 ---
 
