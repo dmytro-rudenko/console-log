@@ -1,6 +1,6 @@
 # console-log
 
-A Claude Code mod that adds a pane beside the chat. For each background Bash or Monitor task, such as `pnpm test` or `vite`, the pane shows the latest lines that fit, from the last 200 of its output, and refreshes every second. Subagents show there too, with their transcripts. It does not scroll.
+A Claude Code mod that adds a pane beside the chat. It shows one task at a time, the newest one still running. For a background Bash or Monitor task, such as `pnpm test` or `vite`, that is the latest lines that fit from the last 200 of its output, refreshed every second. Subagents show there too, with their transcripts. It does not scroll.
 
 ## Requirements
 
@@ -31,7 +31,7 @@ claude plugin install console-log --marketplace dmytro-rudenko/console-log
 - The top line shows the task's status and how many tasks are running; the next line shows `◐` running, `✓` completed, `✗` failed or `■` another end state, then the task's label and age.
 - A command you run with `!` and then send to the background shows there too.
 - A Monitor that runs past its timeout shows `■` and `expired`. A subagent the session no longer lists shows `■` and `killed`.
-- A finished task leaves 10 seconds after it ends. When no tasks are left, the pane closes.
+- A finished task leaves 10 seconds after it ends; while nothing else is running, the pane keeps showing the last one until then. When no tasks are left, the pane closes.
 - If you close the pane with its `✕`, it stays closed until you run `/console-log`.
 - In the fullscreen layout, a pane the mod opens on its own docks beside the chat from 144 terminal columns. Below that, run `/console-log` once; after that the pane docks from 110 columns.
 
@@ -51,7 +51,7 @@ In a fresh clone, `tsconfig.json` extends types that Claude Code writes into `.c
 
 ## Українською
 
-Мод для Claude Code, який додає панель поруч із чатом. Для кожної фонової задачі Bash або Monitor, наприклад `pnpm test` чи `vite`, панель показує найновіші рядки, що вміщаються, з останніх 200 рядків виводу, і оновлюється щосекунди. Субагенти теж показуються там, зі своїми транскриптами. Прокрутки немає.
+Мод для Claude Code, який додає панель поруч із чатом. Вона показує одну задачу за раз — найновішу з тих, що працюють. Для фонової задачі Bash або Monitor, наприклад `pnpm test` чи `vite`, це найновіші рядки, що вміщаються, з останніх 200 рядків виводу, з оновленням щосекунди. Субагенти теж показуються там, зі своїми транскриптами. Прокрутки немає.
 
 ### Вимоги
 
@@ -82,7 +82,7 @@ claude plugin install console-log --marketplace dmytro-rudenko/console-log
 - Верхній рядок показує статус задачі й скільки задач працює; наступний — `◐` працює, `✓` завершено, `✗` помилка, `■` інший кінець, далі назву й вік задачі.
 - Команда, яку ви запустили через `!` і відправили у фон, теж показується.
 - Monitor, що пережив свій timeout, показує `■` і `expired`. Субагент, якого сесія більше не має у списку, показує `■` і `killed`.
-- Завершена задача зникає через 10 секунд після кінця. Коли задач не лишилось, панель закривається.
+- Завершена задача зникає через 10 секунд після кінця; поки нічого іншого не працює, панель до того часу показує останню. Коли задач не лишилось, панель закривається.
 - Якщо закрити панель її `✕`, вона лишається закритою до `/console-log`.
 - У fullscreen-розкладці панель, яку мод відкриває сам, стає поруч із чатом від 144 колонок терміналу. Вужче — один раз виконайте `/console-log`, після цього панель стає поруч від 110 колонок.
 
