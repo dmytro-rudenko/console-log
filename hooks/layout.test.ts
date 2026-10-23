@@ -1,17 +1,17 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { ConsoleTask } from '../types'
-import { age, bottomParts, fit, mark, paneHint, statusText, tabLabel, tabWindow, topParts } from './layout'
+import { age, bottomParts, fit, headLine, mark, statusText, taskLabel, topParts } from './layout'
 
 const t = (extra: Partial<ConsoleTask> = {}): ConsoleTask => ({ id: 'b1', kind: 'shell', command: 'pnpm   exec jest --selectProjects db --runInBand', startedAt: 0, ...extra })
 
 test('frame lines are exactly the pane width', async () => {
   for (const width of [40, 100, 137]) {
-    for (const [title, right] of [['BACKGROUND', '3 tasks'], ['OUTPUT', 'failed · exit 1'], ['OUTPUT', '']] as const) {
+    for (const [title, right] of [['TRANSCRIPT', 'running · 3 running'], ['OUTPUT', 'failed · exit 1'], ['OUTPUT', '']] as const) {
       const p = topParts(title, right, width)
       expect(`╭─ ${title}${p.fill}${p.right}─╮`.length).toBe(width)
     }
-    for (const hint of ['ctrl+→ focus', '', 'x'.repeat(300)]) {
+    for (const hint of ['pnpm test', '', 'x'.repeat(300)]) {
       const p = bottomParts(hint, width)
       expect(`╰─${p.hint}${p.fill}`.length).toBe(width)
     }
@@ -47,21 +47,17 @@ test('status marks and text', async () => {
   expect(statusText(t({ status: 'completed' }))).toBe('completed')
 })
 
-test('tab label prefers the description and caps at 22 chars', async () => {
-  expect(tabLabel(t({ label: 'jest db tests' }))).toBe('jest db tests')
-  expect(tabLabel(t())).toBe('pnpm exec jest --sele…')
+test('task label prefers the description and collapses whitespace without capping', async () => {
+  expect(taskLabel(t({ label: 'jest db tests' }))).toBe('jest db tests')
+  expect(taskLabel(t())).toBe('pnpm exec jest --selectProjects db --runInBand')
 })
 
-test('tab window keeps the selected tab inside the budget', async () => {
-  expect(tabWindow([10, 10, 10], 1, 100)).toEqual({ lo: 0, hi: 2 })
-  const w = tabWindow([10, 10, 10, 10, 10], 4, 25)
-  expect(w.hi).toBe(4)
-  expect(w.lo).toBe(3)
-  expect(tabWindow([], -1, 50)).toEqual({ lo: 0, hi: -1 })
-})
-
-test('pane hint depends on focus and on the ctrl+arrow binding', async () => {
-  expect(paneHint(true, false)).toBe('ctrl+→ next · ctrl+← back')
-  expect(paneHint(false, true)).toBe('ctrl+→ focus')
-  expect(paneHint(false, false)).toBe('ctrl+x tab focus')
+test('head line is exactly the width and keeps the tail', async () => {
+  for (const width of [20, 60, 96]) {
+    const line = headLine('general-purpose·Verify shadow filter integrity', '   1m02s · in view', width)
+    expect(line.length).toBe(width)
+    expect(line.endsWith('1m02s · in view')).toBe(true)
+  }
+  expect(headLine('abc', '', 6)).toBe('abc   ')
+  expect(headLine('abc', 'x'.repeat(10), 4)).toBe('xxx…')
 })

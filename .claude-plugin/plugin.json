@@ -1,6 +1,6 @@
 {
   "name": "console-log",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Live pane beside the chat with the last 200 lines of background Bash and Monitor tasks and the transcripts of subagents",
   "author": { "name": "dmytro-rudenko" },
   "repository": "https://github.com/dmytro-rudenko/console-log",
